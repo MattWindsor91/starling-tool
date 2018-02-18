@@ -225,11 +225,6 @@ module Types =
         { Signature : Func<Param> // main (argv, argc) ...
           Body : 'cmd list } // ... { ... }
 
-    /// <summary>A GRASShopper-specific directive.</summary>
-    type GrasshopperPragma =
-        | ///<summary>An include.</summary>
-          Include of file : string
-
     /// <summary>
     ///     A directive for adding backend-specific information.
     /// </summary>
