@@ -387,8 +387,8 @@ module Atomics =
                     (freshNode (Identifier "x"),
                      freshNode
                         (Symbolic
-                            [ SymString "foo"
-                              SymArg (freshNode (Identifier "baz")) ]),
+                            [ freshNode (SEString "foo")
+                              freshNode (SEArg (freshNode (Identifier "baz"))) ]),
                      Direct))
         check
             ast
@@ -501,8 +501,8 @@ module CommandAxioms =
                 (freshNode (Identifier "baz"))
                 (freshNode
                     (Symbolic
-                        [ SymString "foo"
-                          SymArg (freshNode (Identifier "bar")) ] ))
+                        [ freshNode (SEString "foo")
+                          freshNode (SEArg (freshNode (Identifier "bar"))) ] ))
 
         check
             ast

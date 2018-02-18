@@ -1,12 +1,10 @@
 ﻿/// <summary>
-///    The abstract syntax tree for the Starling language.
+///    The abstract syntax tree for the CViews language.
 /// </summary>
 module Starling.Lang.AST
 
 open Starling
 open Starling.Collections
-open Starling.Core.Symbolic
-open Starling.Core.TypeSystem
 open Starling.Core.Var.Types
 
 
@@ -43,10 +41,23 @@ module Types =
         | False // false
         | Num of int64 // 42
         | Identifier of string // foobaz
-        | Symbolic of Symbolic<Expression> // %{foo}(exprs)
+        | Symbolic of SolverExpression // %{foo}(exprs)
         | BopExpr of BinOp * Expression * Expression // a BOP b
         | UopExpr of UnOp * Expression // UOP a
         | ArraySubscript of array : Expression * subscript : Expression
+    /// <summary>
+    ///     A fragment of a solver expression AST.
+    /// </summary>
+    and SolverExpressionWord =
+        /// <summary>
+        ///     A string part of a symbolic sentence.
+        /// </summary>
+        | SEString of string
+        /// <summary>
+        ///     An argument part of a symbolic sentence.
+        /// </summary>
+        | SEArg of Node<Expression'>
+    and SolverExpression = Node<SolverExpressionWord> list
     and Expression = Node<Expression'>
 
     /// <summary>
@@ -60,7 +71,7 @@ module Types =
         | Fetch of Expression * Expression * FetchMode // <a = b??>
         | Postfix of Expression * FetchMode // <a++> or <a-->
         | Assume of Expression // <assume(e)>
-        | SymCommand of symbol : Symbolic<Expression> // %{xyz}(x, y)
+        | SymCommand of symbol : SolverExpression // %{xyz}(x, y)
         | Havoc of var : string // havoc var
     and Prim = Node<Prim'>
 
@@ -301,7 +312,7 @@ module Pretty =
         | False -> String "false" |> syntaxLiteral
         | Num i -> i.ToString() |> String |> syntaxLiteral
         | Identifier x -> syntaxIdent (String x)
-        | Symbolic sym -> printSymbolic sym
+        | Symbolic sym -> printSolverExpression sym
         | BopExpr(op, a, b) ->
             hsep [ printExpression a
                    printBinOp op
@@ -314,16 +325,19 @@ module Pretty =
             printExpression array <-> squared (printExpression subscript)
     and printExpression (x : Expression) : Doc = printExpression' x.Node
     /// <summary>
-    ///     Pretty-prints a symbolic without interpolation.
+    ///     Pretty-prints a symbolic literal.
     /// </summary>
     /// <param name="s">The symbolic to print.</param>
     /// <returns>
     ///     The <see cref="Doc"/> resulting from printing <paramref name="s"/>.
     /// </returns>
-    and printSymbolic (s : Symbolic<Expression>) : Doc =
-        String "%"
-        <->
-        braced (Starling.Core.Symbolic.Pretty.printSymbolic printExpression s)
+    and printSolverExpression (s : SolverExpression) : Doc =
+        let printSymWord =
+            function
+            | SEString s -> String s
+            | SEArg a -> a |> printExpression |> ssurround "[|" "|]"       
+        let body = s |> List.map (stripNode >> printSymWord) |> hjoin |> braced
+        String "%" <-> body
 
     /// <summary>
     ///     Pretty-prints an if-then-else-like construct.
@@ -449,7 +463,7 @@ module Pretty =
         | Postfix(l, m) ->
             hjoin [ printExpression l; printFetchMode m ]
         | Assume e -> func "assume" [ printExpression e ]
-        | SymCommand sym -> printSymbolic sym
+        | SymCommand sym -> printSolverExpression sym
         | Havoc var -> String "havoc" <+> String var
     and printPrim (x : Prim) : Doc = printPrim' x.Node
 

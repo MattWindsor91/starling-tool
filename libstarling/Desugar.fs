@@ -353,30 +353,28 @@ module private Generators =
 /// </summary>
 module private LocalRewriting =
     open Starling.Collections
-    open Starling.Core.Symbolic
 
     // TODO(CaptainHayashi): this is a royal mess...
     let rewriteVar (ctx : BlockContext) n = withDefault n (ctx.LocalRewrites.TryFind n)
 
-    let rec rewriteSymbolic (ctx : BlockContext) s =
-        List.map
-            (function
-             | SymArg a -> SymArg (rewriteExpression ctx a)
-             | SymString t -> SymString t)
-            s
-    and rewriteExpression (ctx : BlockContext) expr =
-        let rewriteExpression' =
+    let rec rewriteSymbolic (ctx : BlockContext) (s: SolverExpression) =
+        let rewriteSymWord =
             function
-            | True -> True
-            | False -> False
-            | Num k -> Num k
-            | Identifier n -> Identifier (rewriteVar ctx n)
-            | Symbolic s -> Symbolic (rewriteSymbolic ctx s)
-            | BopExpr (bop, l, r) -> BopExpr (bop, rewriteExpression ctx l, rewriteExpression ctx r)
-            | UopExpr (uop, l) -> UopExpr (uop, rewriteExpression ctx l)
-            | ArraySubscript (arr, sub) -> ArraySubscript (rewriteExpression ctx arr, rewriteExpression ctx sub)
-        { expr with Node = rewriteExpression' expr.Node }
-
+            | SEArg a -> SEArg (rewriteExpression ctx a)
+            | SEString t -> SEString t
+        List.map (fun n -> n |>> rewriteSymWord) s
+    and rewriteExpression' (ctx: BlockContext) (expr: Expression') =
+        match expr with
+        | True -> True
+        | False -> False
+        | Num k -> Num k
+        | Identifier n -> Identifier (rewriteVar ctx n)
+        | Symbolic s -> Symbolic (rewriteSymbolic ctx s)
+        | BopExpr (bop, l, r) -> BopExpr (bop, rewriteExpression ctx l, rewriteExpression ctx r)
+        | UopExpr (uop, l) -> UopExpr (uop, rewriteExpression ctx l)
+        | ArraySubscript (arr, sub) -> ArraySubscript (rewriteExpression ctx arr, rewriteExpression ctx sub)
+    and rewriteExpression (ctx : BlockContext) (expr: Expression) =
+        expr |>> rewriteExpression' ctx
 
     let rewriteAFunc (ctx : BlockContext) (func : AFunc) : AFunc =
         Func.updateParams func (List.map (rewriteExpression ctx) func.Params) 

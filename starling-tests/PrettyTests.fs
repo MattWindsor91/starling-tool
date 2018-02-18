@@ -40,13 +40,11 @@ module ExpressionTests =
             "((1 + 2) * 3)"
 
 /// <summary>
-///     Tests for <see cref="printSymbolic"/>.
+///     Tests for <see cref="printSolverExpression"/>.
 /// </summary>
 module SymbolicTests =
-    open Starling.Core.Symbolic
-
     let check sym str =
-        Core.Pretty.printUnstyled (printSymbolic sym) ?=? str
+        Core.Pretty.printUnstyled (printSolverExpression sym) ?=? str
 
     [<Test>]
     let ``the empty symbol %{} is printed correctly`` () =
@@ -54,22 +52,22 @@ module SymbolicTests =
 
     [<Test>]
     let ``the symbol %{hello, world} is printed correctly`` () =
-        check [ SymString "hello, world" ] "%{hello, world}"
+        check [ freshNode (SEString "hello, world") ] "%{hello, world}"
 
     [<Test>]
     let ``the split symbol %{hello, world} is printed correctly`` () =
         check
-            [ SymString "hello,"
-              SymString " "
-              SymString "world" ]
+            [ freshNode (SEString "hello,")
+              freshNode (SEString " ")
+              freshNode (SEString "world") ]
             "%{hello, world}"
 
     [<Test>]
     let ``the symbol %{[|2|] + [|2|] = [|5|]} is printed correctly`` () =
         check
-            [ SymArg (freshNode (Num 2L))
-              SymString " + "
-              SymArg (freshNode (Num 2L))
-              SymString " = "
-              SymArg (freshNode (Num 5L)) ]
+            [ freshNode (SEArg (freshNode (Num 2L)))
+              freshNode (SEString " + ")
+              freshNode (SEArg (freshNode (Num 2L)))
+              freshNode (SEString " = ")
+              freshNode (SEArg (freshNode (Num 5L))) ]
             "%{[|2|] + [|2|] = [|5|]}"

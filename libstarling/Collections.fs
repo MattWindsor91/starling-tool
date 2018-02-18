@@ -459,12 +459,14 @@ module Positioning =
         override this.ToString() = sprintf "SourcePosition { StreamName = \"%s\"; Line = %d; Column = %d; };" this.StreamName this.Line this.Column
 
     /// A Node in the AST which annotates the data with information about position
-    //type Node<'a> = { lineno : int; Node : 'a; }
     type Node<'a> =
         { Position: SourcePosition; Node: 'a }
         static member (|>>) (n, f) = { Position = n.Position; Node = f n.Node }
         static member (|=>) (n, b) = { Position = n.Position; Node = b }
         override this.ToString() = sprintf "<%A: %A>" this.Position this.Node
+
+    /// Gets the underlying syntax node of a Node.
+    let stripNode (a: Node<'a>): 'a = a.Node
 
     module Pretty =
         open Starling.Core.Pretty

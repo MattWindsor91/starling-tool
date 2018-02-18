@@ -10,7 +10,6 @@ open Chessie.ErrorHandling
 
 open Starling
 open Starling.Collections
-open Starling.Core.Symbolic
 open Starling.Core.Var
 open Starling.Lang.AST
 
@@ -170,12 +169,12 @@ let nodify v =
 /// </summary>
 let parseSymbolicSentence =
     many
-        (choice
-            [ inInterpBraces parseExpression |>> SymArg <?> "interpolated expression"
-              many1Chars (noneOf "}[") |>> SymString <?> "symbol body"
-              // TODO(MattWindsor91): this is a bit crap.
-              (pchar '[' .>>. noneOf "|"
-                |>> fun (x, y) -> SymString (System.String.Concat [| x; y |])) ] )
+        (nodify
+            (choice
+                [ inInterpBraces parseExpression |>> SEArg <?> "interpolated expression"
+                  many1Chars (noneOf "}[") |>> SEString <?> "symbol body"
+                  // TODO(MattWindsor91): this is a bit crap.
+                  pchar '[' .>>. noneOf "|" |>> (fun (x, y) -> System.String.Concat [| x; y |]) |>> SEString <?> "symbol body" ]))
 
 /// <summary>
 ///     Parser for symbolic expressions.

@@ -101,7 +101,7 @@ module Types =
         /// A substitution over the variable produced a `TraversalError`.
         | BadSub of err : TraversalError<unit>
         /// A symbolic expression appeared in an ambiguous position.
-        | AmbiguousSym of sym : Symbolic<Expression>
+        | AmbiguousSym of sym : SolverExpression
         override this.ToString() = sprintf "%A" this
 
     /// Represents an error when converting a view prototype.
@@ -290,7 +290,7 @@ module Pretty =
             <+> printTraversalError (fun _ -> String "()") err
         | AmbiguousSym sym ->
             String "symbolic var"
-            <+> quoted (printSymbolic sym)
+            <+> quoted (printSolverExpression sym)
             <+> String "has ambiguous type: place it inside an expression with non-symbolic components"
 
     /// Pretty-prints view conversion errors.
@@ -561,6 +561,23 @@ let checkBoolIsNormalType (bool : TypedBoolExpr<'Var>)
                 (expected = Exact (Typed.Bool (normalRec, ())),
                  got = Exact (Typed.Bool (bool.SRec, ()))))
 
+/// <summary>
+///     Tries to model a solver expression.
+/// </summary>
+/// <param name="f">The function to map.</param>
+/// <param name="sym">The symbol to map over.</param>
+/// <typeparam name="Src">The type of arguments before the map.</param>
+/// <typeparam name="Dst">The type of arguments after the map.</param>
+/// <typeparam name="Error">The type of Chessie errors.</param>
+/// <returns>The resulting symbol, if all maps succeeded.</returns>
+let tryModelSolverExpression (f : Expression -> Result<'Dst, 'Error>) (sym : SolverExpression)
+  : Result<Symbolic<'Dst>, 'Error> =
+    let tryModelSolverExpressionWord =
+        function
+        | SEString s -> ok (SymString s)
+        | SEArg a -> lift SymArg (f a)
+
+    sym |> List.map (stripNode >> tryModelSolverExpressionWord) |> collect
 
 /// <summary>
 ///     Models a Starling expression as an <c>Expr</c>.
@@ -767,7 +784,7 @@ and modelBoolExpr
                scope. *)
             lift
                 (Sym >> BVar >> indefBool)
-                (tryMapSym (modelExpr env (symbolicScopeOf scope) varF) sa)
+                (tryModelSolverExpression (modelExpr env (symbolicScopeOf scope) varF) sa)
         | ArraySubscript (arr, idx) ->
             let arrR = ma arr
             // Indices always have to be of type 'int', and in local scope.
@@ -895,7 +912,7 @@ and modelIntExpr
             // Symbols have indefinite subtype.
             lift
                 (Sym >> IVar >> indefInt)
-                (tryMapSym (modelExpr env (symbolicScopeOf scope) varF) sa)
+                (tryModelSolverExpression (modelExpr env (symbolicScopeOf scope) varF) sa)
         | ArraySubscript (arr, idx) ->
             let arrR = ma arr
             // Indices always have to be of type 'int' and local scope.
@@ -1650,7 +1667,7 @@ module private Prim =
             | SymCommand sym ->
                 // TODO(CaptainHayashi): split out.
                 let symMR =
-                    (tryMapSym
+                    (tryModelSolverExpression
                         (wrapMessages BadExpr (modelExpr env scope id)) sym)
                 lift (Symbol >> List.singleton) symMR
 
