@@ -123,8 +123,14 @@ module Types =
     /// An AST func.
     type AFunc = Func<Expression>
 
-    /// A function view definition
-    type StrFunc = Func<string>
+    /// A view atom appearing in a signature.
+    type SigAtom =
+        { SAName: string
+          SAParams: string list }
+    
+    /// Constructs a SigAtom.
+    let sigAtom (name: string) (pars: string list): SigAtom =
+        { SAName = name; SAParams = pars }
 
     /// <summary>
     ///     An AST type literal.
@@ -171,8 +177,8 @@ module Types =
     type ViewSignature =
         | Unit
         | Join of ViewSignature * ViewSignature
-        | Func of StrFunc
-        | Iterated of StrFunc * string
+        | Func of SigAtom
+        | Iterated of SigAtom * string
 
     /// <summary>
     ///     An AST variable declaration.
@@ -255,8 +261,8 @@ module Types =
         | Search of int // search 0;
         | ViewProtos of ViewProto list // view name(int arg);
         | Constraint of ViewSignature * Expression option // constraint emp => true
-        | Exclusive of List<StrFunc> // exclusive p(x), q(x), r(x)
-        | Disjoint of List<StrFunc> // disjoint p(x), q(x), r(x)
+        | Exclusive of SigAtom list // exclusive p(x), q(x), r(x)
+        | Disjoint of SigAtom list // disjoint p(x), q(x), r(x)
         override this.ToString() = sprintf "%A" this
     and ScriptItem = Node<ScriptItem'>
 
@@ -383,7 +389,6 @@ module Pretty =
         : Doc =
             printITELike (Helpers.printBlock pCmd) cond thenCmds elseCmds
 
-
     /// Pretty-prints views.
     let rec printView : View -> Doc =
         function
@@ -402,13 +407,17 @@ module Pretty =
         | Unknown -> String "?" |> syntaxView
         >> ssurround "{| " " |}"
 
+    /// Pretty-prints signature view atoms.
+    let printSigAtom (a: SigAtom): Doc =
+        func a.SAName (List.map String a.SAParams)
+
     /// Pretty-prints view definitions.
     let rec printViewSignature : ViewSignature -> Doc =
         function
-        | ViewSignature.Func f -> printFunc String f
+        | ViewSignature.Func f -> printSigAtom f
         | ViewSignature.Unit -> String "emp" |> syntaxView
         | ViewSignature.Join(l, r) -> binop "*" (printViewSignature l) (printViewSignature r)
-        | ViewSignature.Iterated(f, e) -> hsep [String "iter" |> syntaxView; hjoin [String "[" |> syntaxView; String e; String "]" |> syntaxView]; printFunc String f]
+        | ViewSignature.Iterated(f, e) -> hsep [String "iter" |> syntaxView; hjoin [String "[" |> syntaxView; String e; String "]" |> syntaxView]; printSigAtom f]
 
     /// Pretty-prints constraints.
     let printConstraint (view : ViewSignature) (def : Expression option) : Doc =
@@ -421,15 +430,15 @@ module Pretty =
         |> withSemi
 
     /// Pretty-prints exclusivity constraints.
-    let printExclusive (xs : List<StrFunc>) : Doc =
+    let printExclusive (xs : SigAtom list) : Doc =
         hsep ((String "exclusive") ::
-              (List.map (printFunc String) xs))
+              (List.map printSigAtom xs))
         |> withSemi
 
     /// Pretty-prints exclusivity constraints.
-    let printDisjoint (xs : List<StrFunc>) : Doc =
+    let printDisjoint (xs : SigAtom list) : Doc =
         hsep ((String "disjoint") ::
-              (List.map (printFunc String) xs))
+              (List.map printSigAtom xs))
         |> withSemi
 
     /// Pretty-prints fetch modes.

@@ -152,7 +152,7 @@ let ticketLockConstraint01 =
             Node = Identifier "serving";});})
 
 let ticketLockConstraint02 =
-    (ViewSignature.Func (regFunc "holdTick" ["t"]),
+    (ViewSignature.Func (sigAtom "holdTick" ["t"]),
      Some
       {Position = {StreamName = "Examples/Pass/ticketLock.cvf";
                    Line = 41L;
@@ -169,7 +169,7 @@ let ticketLockConstraint02 =
             Node = Identifier "t";});})
 
 let ticketLockConstraint03 =
-    (ViewSignature.Func (regFunc "holdLock" []),
+    (ViewSignature.Func (sigAtom "holdLock" []),
      Some
       {Position = {StreamName = "Examples/Pass/ticketLock.cvf";
                    Line = 42L;
@@ -187,8 +187,8 @@ let ticketLockConstraint03 =
 
 let ticketLockConstraint04 =
     (ViewSignature.Join
-        (ViewSignature.Func (regFunc "holdLock" []),
-         ViewSignature.Func (regFunc "holdTick" ["t"])),
+        (ViewSignature.Func (sigAtom "holdLock" []),
+         ViewSignature.Func (sigAtom "holdTick" ["t"])),
      Some
       {Position = {StreamName = "Examples/Pass/ticketLock.cvf";
                    Line = 45L;
@@ -206,8 +206,8 @@ let ticketLockConstraint04 =
 
 let ticketLockConstraint05 =
     (ViewSignature.Join
-        (ViewSignature.Func (regFunc "holdTick" ["ta"]),
-         ViewSignature.Func (regFunc "holdTick" ["tb"])),
+        (ViewSignature.Func (sigAtom "holdTick" ["ta"]),
+         ViewSignature.Func (sigAtom "holdTick" ["tb"])),
      Some
       {Position = {StreamName = "Examples/Pass/ticketLock.cvf";
                    Line = 46L;
@@ -225,8 +225,8 @@ let ticketLockConstraint05 =
 
 let ticketLockConstraint06 =
     (ViewSignature.Join
-        (ViewSignature.Func (regFunc "holdLock" []),
-         ViewSignature.Func (regFunc "holdLock" [])),
+        (ViewSignature.Func (sigAtom "holdLock" []),
+         ViewSignature.Func (sigAtom "holdLock" [])),
      Some
       {Position = {StreamName = "Examples/Pass/ticketLock.cvf";
                    Line = 47L;

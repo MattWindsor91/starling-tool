@@ -114,14 +114,14 @@ let rec makeExclusive views =
     | [] -> [] 
 
 
-let rec makeDisjoint (xs : List<StrFunc>) = 
+let rec makeDisjoint (xs : SigAtom list) = 
 
     let str2Expr (s : string) : Expression = 
       freshNode (Identifier s) 
 
     let makeNeqArgs 
-         ({Params = px}: StrFunc) 
-         ({Params = py}: StrFunc) : Expression = 
+         ({SAParams = px}: SigAtom) 
+         ({SAParams = py}: SigAtom) : Expression = 
       List.zip (List.map str2Expr px) (List.map str2Expr py) 
       |> 
       List.map (fun (a,b) -> freshNode (BopExpr(Neq,a,b))) 
@@ -130,7 +130,7 @@ let rec makeDisjoint (xs : List<StrFunc>) =
         (fun acc e -> freshNode (BopExpr(Or,acc,e))) 
         (freshNode False) 
 
-    let makeJoin (x: StrFunc) (y: StrFunc)  = 
+    let makeJoin (x: SigAtom) (y: SigAtom)  = 
       ViewSignature.Join (ViewSignature.Func x, ViewSignature.Func y)
  
     let makeDisjointSingle x xs = 

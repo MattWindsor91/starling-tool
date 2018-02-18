@@ -1050,32 +1050,41 @@ let lookupFunc (protos : FuncDefiner<ProtoInfo>) (func : Func<_>)
              | Some (proto, _) -> proto |> ok
              | None -> func.Name |> NoSuchView |> fail)
 
-/// Models part of a view definition as a DFunc.
+/// Matches a SigAtom against a prototype list, and models it as a DFunc.
 let modelDFunc
   (protos : FuncDefiner<ProtoInfo>)
-  (func : Func<Var>)
-  : Result<Multiset<DFunc>, ViewError> =
-    func
-    |> lookupFunc protos
-    |> lift (fun proto ->
-                 Starling.Collections.func func.Name (funcViewParMerge proto.Params func.Params) func.FuncType
-                 |> Multiset.singleton)
+  (sa : SigAtom)
+  : Result<DFunc, ViewError> =
+    let saFunc = regFunc sa.SAName sa.SAParams
+    let protoR = lookupFunc protos saFunc
+    
+    let instantiate proto =
+        regFunc sa.SAName (funcViewParMerge proto.Params sa.SAParams)
+
+    lift instantiate protoR
 
 /// Tries to convert a view def into its model (multiset) form.
 let rec modelViewSignature (protos : FuncDefiner<ProtoInfo>) =
     function
     | ViewSignature.Unit -> ok Multiset.empty
-    | ViewSignature.Func dfunc ->
-        let uniterated = modelDFunc protos dfunc
-        lift (Multiset.map (fun f -> { Func = f; Iterator = None })) uniterated
-    | ViewSignature.Join(l, r) -> trial { let! lM = modelViewSignature protos l
-                                          let! rM = modelViewSignature protos r
-                                          return Multiset.append lM rM }
-    | ViewSignature.Iterated(dfunc, e) ->
+    | ViewSignature.Func atom ->
+        let modelledR = modelDFunc protos atom
+        let atomToView f = Multiset.singleton {Func = f; Iterator = None}
+        lift atomToView modelledR
+    | ViewSignature.Join(l, r) ->
+        lift2
+            Multiset.append
+            (modelViewSignature protos l)
+            (modelViewSignature protos r)
+    | ViewSignature.Iterated(atom, e) ->
+        let modelledR = modelDFunc protos atom
+
         // Iterators have the 'int' subtype.
-        let updateFunc (s : string) f = { Func = f; Iterator = Some (Int (normalRec, s)) }
-        let modelledDFunc = modelDFunc protos dfunc
-        lift (Multiset.map (updateFunc e)) modelledDFunc
+        let atomToView f =
+            Multiset.singleton
+                { Func = f; Iterator = Some (Int (normalRec, e)) }
+
+        lift atomToView modelledR
 
 let makeIteratorMap : TypedVar option -> VarMap =
     function

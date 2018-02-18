@@ -464,7 +464,11 @@ let parseViewExpr =
  *)
 
 /// Parses a functional view definition.
-let parseStrFuncView = parseFunc parseIdentifier |>> ViewSignature.Func
+let parseSigAtom =
+    pipe2ws
+        parseIdentifier
+        (parseParamList parseIdentifier) 
+        sigAtom
 
 /// Parses the unit view definition.
 let parseDUnit = stringReturn "emp" ViewSignature.Unit
@@ -485,14 +489,14 @@ let parseIteratedContainer
 /// Parses an iterated view definition.
 let parseDIterated =
     parseIteratedContainer
-        (parseFunc parseIdentifier)
+        parseSigAtom
         (fun e f -> ViewSignature.Iterated(f, e))
 
 /// Parses a `basic` view definition (unit, if, named, or bracketed).
 let parseBasicViewSignature =
     choice [ parseDUnit
              // ^- `emp'
-             parseStrFuncView
+             parseSigAtom |>> ViewSignature.Func
              // ^- <identifier>
              //  | <identifier> <arg-list>
              inParens parseViewSignature ]
@@ -651,17 +655,17 @@ let parseConstraint : Parser<ViewSignature * Expression option, unit> =
 
 
 /// parse an exclusivity constraint
-let parseExclusive : Parser<List<StrFunc>, unit> =
+let parseExclusive : Parser<SigAtom list, unit> =
     pstring "exclusive" >>. ws
     // ^- exclusive ..
-    >>. parseDefs (parseFunc parseIdentifier)
+    >>. parseDefs parseSigAtom
     .>> wsSemi
 
 /// parse a disjointness constraint
-let parseDisjoint : Parser<List<StrFunc>, unit> =
+let parseDisjoint : Parser<SigAtom list, unit> =
     pstring "disjoint" >>. ws
-    // ^- exclusive ..
-    >>. parseDefs (parseFunc parseIdentifier)
+    // ^- disjoint ..
+    >>. parseDefs parseSigAtom
     .>> wsSemi
 
 

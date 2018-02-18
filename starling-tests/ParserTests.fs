@@ -285,7 +285,7 @@ module ConstraintTests =
     [<Test>]
     let ``Func(a,b) -> c > a + b``() =
         check parseConstraint "constraint Func(a, b) -> c > a + b;"
-        <| (ViewSignature.Func (regFunc "Func" [ "a"; "b" ] ),
+        <| (ViewSignature.Func (sigAtom "Func" [ "a"; "b" ] ),
                  Some
                    (node "" 1L 28L
                     <| BopExpr (Gt,
@@ -298,5 +298,5 @@ module ConstraintTests =
     [<Test>]
     let ``Func(a,b) -> ?;``() =
         check parseConstraint "constraint Func(a, b) -> ?;"
-        <| (ViewSignature.Func (regFunc "Func" [ "a"; "b" ] ),
+        <| (ViewSignature.Func (sigAtom "Func" [ "a"; "b" ] ),
                  (None : Expression option))
