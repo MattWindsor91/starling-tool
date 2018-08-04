@@ -4,11 +4,9 @@
 /// </summary>
 module Starling.Lang.Collator
 
-open Starling.Collections
+open CViews.Ast
+open CViews.AstNode
 open Starling.Utils
-
-open Starling.Lang.AST
-
 
 /// <summary>
 ///     Types for the collator stage.
@@ -37,7 +35,7 @@ module Types =
           Search : int option
           /// <summary>The typedef list.</summary>
           Typedefs : (TypeLiteral * string) list
-          VProtos : ViewProto list
+          VProtos : ProAtom list
           Constraints : (ViewSignature * Expression option) list
           /// <summary>
           ///     List of methods, combined with their script position.
@@ -70,7 +68,7 @@ module Pretty =
             hsep [ String cls; printVarDecl vdc ]
 
         let definites =
-            [ vsep <| Seq.map (fun p -> printViewProtoList [p]) cs.VProtos
+            [ vsep <| Seq.map (fun p -> printProtoAtomList [p]) cs.VProtos
               vsep <| Seq.map (printScriptVar "shared") cs.SharedVars
               vsep <| Seq.map (printScriptVar "thread") cs.ThreadVars
               vsep <| Seq.map (uncurry printConstraint) cs.Constraints

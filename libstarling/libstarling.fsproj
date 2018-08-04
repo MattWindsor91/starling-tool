@@ -39,6 +39,9 @@
     <Compile Include="Grasshopper.fs" />
     <Compile Include="Frontend.fs" />
   </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\libcviews\libcviews.fsproj" />
+  </ItemGroup>
   <!-- Z3 wraps a native DLL, so it's next to impossible to include a package
        for it portably.  Instead, we expect the user to build 'Microsoft.Z3.dll'
        locally, and copy it to the Starling directory. -->

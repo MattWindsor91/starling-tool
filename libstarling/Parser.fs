@@ -8,10 +8,11 @@ open System
 open FParsec
 open Chessie.ErrorHandling
 
+open CViews.Ast
+open CViews.AstNode
+
 open Starling
 open Starling.Collections
-open Starling.Core.Var
-open Starling.Lang.AST
 
 
 // Manually re-overload some FParsec operators Chessie overloaded.
@@ -296,8 +297,9 @@ let parseCAS =
 
 /// Parser for fetch sigils.
 let parseFetchSigil =
-    choice [ pstring "++" >>% Increment
-             pstring "--" >>% Decrement ] <|>% Direct
+    opt (
+        choice [ pstring "++" >>% PlusPlus
+                 pstring "--" >>% MinusMinus ])
 
 /// Parser for fetch right-hand-sides.
 let parseFetch fetcher =
@@ -311,8 +313,8 @@ let parseFetchOrPostfix =
     .>> ws
     .>>. parseFetchSigil
     >>= function
-        | (x, Direct) -> ws >>. pstring "=" >>. ws >>. parseFetch x
-        | p -> Postfix p |> preturn
+        | (x, None) -> ws >>. pstring "=" >>. ws >>. parseFetch x
+        | (x, Some p) -> Postfix (x, p) |> preturn
 
 /// Parser for assume actions.
 let parseAssume =
@@ -359,10 +361,6 @@ do parseAtomicRef :=
 /// Parser for a collection of atomic actions.
 let parseAtomicSet =
     inAtomicBraces (many1 (parseAtomic .>> ws))
-
-/// Parses a Func given the argument parser argp.
-let parseFunc argp =
-    pipe2ws parseIdentifier (parseParamList argp) regFunc
 
 (*
  * View-likes (views and view definitions).
@@ -423,7 +421,7 @@ let parseLocalView =
 
 
 /// Parses a functional view.
-let parseFuncView = parseFunc parseExpression |>> View.Func
+let parseFuncView = pipe2ws parseIdentifier (parseParamList parseExpression) assertAtom |>> View.Func
 
 /// Parses a `basic` view (unit, if, named, or bracketed).
 let parseBasicView =
@@ -514,10 +512,9 @@ do parseViewSignatureRef := parseViewLike parseBasicViewSignature ViewSignature.
 let parseViewProto =
     // TODO (CaptainHayashi): so much backtracking...
     (pstring "iter" >>. ws >>.
-      (parseFunc parseParam |>> WithIterator))
+      (pipe2ws parseIdentifier (parseParamList parseParam) (fun n s -> proAtom n s true)))
     <|>
-      (parseFunc parseParam
-         |>> (fun lhs -> NoIterator (lhs, false)))
+      (pipe2ws parseIdentifier (parseParamList parseParam) (fun n s -> proAtom n s false))
 
 /// Parses a set of one or more view prototypes.
 let parseViewProtoSet =
@@ -673,11 +670,13 @@ let parseDisjoint : Parser<SigAtom list, unit> =
 let parseMethod =
     pstring "method" >>. ws >>.
     // ^- method ...
-        pipe2ws (parseFunc parseParam)
-                // ^- <identifier> <arg-list> ...
+        pipe3ws parseIdentifier
+                // ^- <identifier>
+                (parseParamList parseParam)
+                // ^- <arg-list> ...
                 parseBlock
                 // ^-                             ... <block>
-                (fun s b -> {Signature = s ; Body = b} )
+                (fun n p b -> {MName = n; MParams = p; MBody = b} )
 
 /// Parses a search directive.
 let parseSearch =

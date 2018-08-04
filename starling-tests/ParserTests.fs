@@ -11,6 +11,8 @@ open Starling.Core.Var
 open Starling.Core.Symbolic
 open Starling.Core.TypeSystem
 open Starling.Core.Var
+open CViews.Ast
+open CViews.AstNode
 open Starling.Lang.AST
 open Starling.Lang.Parser
 

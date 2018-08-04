@@ -77,12 +77,6 @@ module Types =
           /// </summary>
           WithMap of map : VarMap * rest : Scope
 
-    /// A mode for the Fetch atomic action.
-    type FetchMode =
-        | Direct // <a = b>
-        | Increment // <a = b++>
-        | Decrement // <a = b-->
-
     /// Represents an error when building or converting a variable map.
     type VarMapError =
         | Duplicate of name : string

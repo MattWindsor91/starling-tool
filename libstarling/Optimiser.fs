@@ -13,6 +13,8 @@ open System.Collections.Generic
 
 open Chessie.ErrorHandling
 
+open CViews
+
 open Starling.Core.TypeSystem
 open Starling.Collections
 open Starling.Utils

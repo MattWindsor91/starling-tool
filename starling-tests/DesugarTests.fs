@@ -11,7 +11,8 @@ open Starling.Collections
 open Starling.Core.Var
 open Starling.Core.View
 
-open Starling.Lang.AST
+open CViews.Ast
+open CViews.AstNode
 open Starling.Lang.Desugar
 
 let normalCtx : BlockContext =
@@ -169,7 +170,7 @@ module DesugarAtomic =
                     (Fetch
                         (freshNode (Identifier "__ok_0"),
                          freshNode (Identifier "foobar"),
-                         Direct))))
+                         None))))
             normalCtx
             (freshNode
                 (AAssert (freshNode (Identifier "foobar"))))
@@ -187,7 +188,7 @@ module DesugarAtomic =
                     (Fetch
                         (freshNode (Identifier "__ok_0"),
                          freshNode False,
-                         Direct))))
+                         None))))
             normalCtx
             (freshNode AError)
 
@@ -208,7 +209,7 @@ module DesugarAtomic =
                                 (Eq,
                                  freshNode (Identifier "0_32_s"),
                                  freshNode (Identifier "10_9_t")))),
-                         Direct))))
+                         None))))
             rewritingCtx
             (freshNode
                 (AAssert
@@ -231,7 +232,7 @@ module DesugarAtomic =
                     (Fetch
                         (freshNode (Identifier "__ok_2"),
                          freshNode (Identifier "foobar"),
-                         Direct))))
+                         None))))
             dupeCtx
             (freshNode
                 (AAssert (freshNode (Identifier "foobar"))))
@@ -249,7 +250,7 @@ module DesugarAtomic =
                     (Fetch
                         (freshNode (Identifier "__ok_2"),
                          freshNode False,
-                         Direct))))
+                         None))))
             dupeCtx
             (freshNode AError)
 

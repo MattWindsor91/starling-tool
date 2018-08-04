@@ -6,6 +6,8 @@ module Starling.Lang.Grapher
 
 open Chessie.ErrorHandling
 
+open CViews.AstNode
+
 open Starling.Collections
 open Starling.Utils
 open Starling.Core.Expr

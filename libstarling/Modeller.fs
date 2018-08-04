@@ -5,6 +5,9 @@
 module Starling.Lang.Modeller
 
 open Chessie.ErrorHandling
+
+open CViews
+
 open Starling
 open Starling.Collections
 open Starling.Core
@@ -83,7 +86,7 @@ module Types =
         /// <summary>
         ///     A language type literal is inexpressible in Starling.
         /// </summary>
-        | ImpossibleType of lit : TypeLiteral * why : string
+        | ImpossibleType of lit : Ast.TypeLiteral * why : string
 
     // TODO(CaptainHayashi): more consistent constructor names
     /// Represents an error when converting an expression.
@@ -101,7 +104,7 @@ module Types =
         /// A substitution over the variable produced a `TraversalError`.
         | BadSub of err : TraversalError<unit>
         /// A symbolic expression appeared in an ambiguous position.
-        | AmbiguousSym of sym : SolverExpression
+        | AmbiguousSym of sym : Ast.SolverExpression
         override this.ToString() = sprintf "%A" this
 
     /// Represents an error when converting a view prototype.
@@ -111,12 +114,12 @@ module Types =
         /// <summary>
         ///     A view prototype had parameters of incorrect type in it.
         /// </summary>
-        | BadParamType of proto : ViewProto * par : Param * err : TypeError
+        | BadParamType of proto : Ast.ProAtom * par : Ast.Param * err : TypeError
 
     /// Represents an error when converting a view or view def.
     type ViewError =
         /// An expression in the view generated an `ExprError`.
-        | BadExpr of expr : AST.Types.Expression * err : ExprError
+        | BadExpr of expr : Ast.Expression * err : ExprError
         /// A view was requested that does not exist.
         | NoSuchView of name : string
         /// A view lookup failed.
@@ -130,30 +133,30 @@ module Types =
     /// Represents an error when converting a constraint.
     type ConstraintError =
         /// The view definition in the constraint generated a `ViewError`.
-        | CEView of vdef : AST.Types.ViewSignature * err : ViewError
+        | CEView of vdef : Ast.ViewSignature * err : ViewError
         /// The expression in the constraint generated an `ExprError`.
-        | CEExpr of expr : AST.Types.Expression * err : ExprError
+        | CEExpr of expr : Ast.Expression * err : ExprError
 
     /// Represents an error when converting a prim.
     type PrimError =
         /// <summary>
         ///     A prim needed a lvalue but got a non-lvalue expression.
         /// </summary>
-        | NeedLValue of expr : AST.Types.Expression
+        | NeedLValue of expr : Ast.Expression
         /// A prim contained a bad expression.
-        | BadExpr of expr : AST.Types.Expression * err : ExprError
+        | BadExpr of expr : Ast.Expression * err : ExprError
         /// A binary prim contained two bad expressions.
-        | BadExprPair of l : AST.Types.Expression * r : AST.Types.Expression * err : ExprError
+        | BadExprPair of l : Ast.Expression * r : Ast.Expression * err : ExprError
         /// A prim tried to increment an expression.
-        | IncExpr of expr : AST.Types.Expression
+        | IncExpr of expr : Ast.Expression
         /// A prim tried to decrement an expression.
-        | DecExpr of expr : AST.Types.Expression
+        | DecExpr of expr : Ast.Expression
         /// A prim tried to increment a Boolean.
-        | IncBool of expr : AST.Types.Expression
+        | IncBool of expr : Ast.Expression
         /// A prim tried to decrement a Boolean.
-        | DecBool of expr : AST.Types.Expression
+        | DecBool of expr : Ast.Expression
         /// A prim tried to atomic-load from a non-lvalue expression.
-        | LoadNonLV of expr : AST.Types.Expression
+        | LoadNonLV of expr : Ast.Expression
         /// A prim has no effect.
         | Useless
         /// <summary>A prim is not yet implemented in Starling.</summary>
@@ -161,22 +164,22 @@ module Types =
         /// <summary>Handling variables in symbolic prims caused an error.</summary>
         | SymVarError of err : VarMapError
         /// <summary>An atomic branch contains a bad if-then-else condition.</summary>
-        | BadAtomicITECondition of expr: AST.Types.Expression * err: ExprError
+        | BadAtomicITECondition of expr: Ast.Expression * err: ExprError
         /// <summary>An atomic branch contains a bad assume.</summary>
-        | BadAssume of expr: AST.Types.Expression * err: ExprError
+        | BadAssume of expr: Ast.Expression * err: ExprError
 
     /// Represents an error when converting a method.
     type MethodError =
         /// The method contains a semantically invalid local action.
-        | BadLocal of prim : Prim * err : PrimError
+        | BadLocal of prim : Ast.Prim * err : PrimError
         /// The method contains a semantically invalid atomic action.
         | BadAtomic of atom : DesugaredAtomic * err : PrimError
         /// The method contains a bad if-then-else condition.
-        | BadITECondition of expr: AST.Types.Expression * err: ExprError
+        | BadITECondition of expr: Ast.Expression * err: ExprError
         /// The method contains a bad while condition.
-        | BadWhileCondition of expr: AST.Types.Expression * err: ExprError
+        | BadWhileCondition of expr: Ast.Expression * err: ExprError
         /// The method contains a bad view.
-        | BadView of view : Node<ViewExpr<DesugaredGView>> * err : ViewError
+        | BadView of view : AstNode.Node<ViewExpr<DesugaredGView>> * err : ViewError
         /// The method contains an command not yet implemented in Starling.
         | CommandNotImplemented of cmd : FullCommand
 
@@ -189,15 +192,15 @@ module Types =
         /// <remarks>
         ///     This restriction may be lifted eventually.
         /// </remarks>
-        | ConjoinDefAndIndef of pattern : ViewSignature
+        | ConjoinDefAndIndef of pattern : Ast.ViewSignature
         /// A view prototype in the program generated a `ViewProtoError`.
         | BadVProto of proto : DesugaredViewProto * err : ViewProtoError
         /// A view prototype's parameter in the program generated a `TypeError`.
-        | BadVProtoParamType of proto : ViewProto * param : Param * err : TypeError
+        | BadVProtoParamType of proto : Ast.ProAtom * param : Ast.Param * err : TypeError
         /// A constraint in the program generated a `ConstraintError`.
-        | BadConstraint of constr : AST.Types.ViewSignature * err : ConstraintError
+        | BadConstraint of constr : Ast.ViewSignature * err : ConstraintError
         /// A method in the program generated an `MethodError`.
-        | BadMethod of methname : string * methloc : SourcePosition * err : MethodError
+        | BadMethod of methname : string * methloc : AstNode.SourcePosition * err : MethodError
         /// A variable in the program generated a `VarMapError`.
         | BadVar of scope: string * err : VarMapError
         /// A variable declaration in the program generated a `TypeError`.
@@ -331,7 +334,7 @@ module Pretty =
                 (errorStr "parameter"
                  <+> quoted (printParam par)
                  <+> errorStr "in view proto"
-                 <+> quoted (printGeneralViewProto printParam proto)
+                 <+> quoted (printProtoAtom proto)
                  <+> errorStr "has bad type")
                 [ printTypeError err ]
 
@@ -382,13 +385,13 @@ module Pretty =
     let wrappedPos
       (wholeDesc : string)
       (whole : Doc)
-      (pos : SourcePosition)
+      (pos : AstNode.SourcePosition)
       (err : Doc)
       : Doc =
         cmdHeaded
             (errorContextStr "->" <+> errorContextStr wholeDesc <+> whole
              <+> errorContextStr "at"
-             <+> Starling.Collections.Positioning.Pretty.printPosition pos)
+             <+> Starling.Lang.AST.Pretty.printPosition pos)
             [ err ]
 
     /// Pretty-prints method errors.
@@ -436,7 +439,7 @@ module Pretty =
                 errorStr "type of param"
                 <+> quoted (printParam param)
                 <+> errorStr "in view prototype"
-                <+> quoted (printGeneralViewProto printParam vproto)
+                <+> quoted (printProtoAtom vproto)
             cmdHeaded head [ printTypeError err ]
         | BadVarType(name, err) ->
             wrapped "type of variable" (String name) (printTypeError err)
@@ -508,7 +511,7 @@ let exprTypeMismatch (expected : FuzzyType) (got : FuzzyType) : ExprError =
 /// <param name="got">The actual type of the expression.</param>
 /// <returns>An <see cref="PrimError"/> representing a type mismatch.</returns>
 let primTypeMismatch
-  (expr : Expression) (expected : FuzzyType) (got : FuzzyType) : PrimError =
+  (expr : Ast.Expression) (expected : FuzzyType) (got : FuzzyType) : PrimError =
     BadExpr (expr, exprTypeMismatch expected got)
 
 // <summary>
@@ -570,14 +573,14 @@ let checkBoolIsNormalType (bool : TypedBoolExpr<'Var>)
 /// <typeparam name="Dst">The type of arguments after the map.</param>
 /// <typeparam name="Error">The type of Chessie errors.</param>
 /// <returns>The resulting symbol, if all maps succeeded.</returns>
-let tryModelSolverExpression (f : Expression -> Result<'Dst, 'Error>) (sym : SolverExpression)
+let tryModelSolverExpression (f : Ast.Expression -> Result<'Dst, 'Error>) (sym : Ast.SolverExpression)
   : Result<Symbolic<'Dst>, 'Error> =
     let tryModelSolverExpressionWord =
         function
-        | SEString s -> ok (SymString s)
-        | SEArg a -> lift SymArg (f a)
+        | Ast.SEString s -> ok (SymString s)
+        | Ast.SEArg a -> lift SymArg (f a)
 
-    sym |> List.map (stripNode >> tryModelSolverExpressionWord) |> collect
+    sym |> List.map (AstNode.stripNode >> tryModelSolverExpressionWord) |> collect
 
 /// <summary>
 ///     Models a Starling expression as an <c>Expr</c>.
@@ -618,24 +621,24 @@ let rec modelExpr
   (env : Env)
   (scope : Scope)
   (varF : Var -> 'var)
-  (e : Expression)
+  (e : Ast.Expression)
   : Result<Expr<Sym<'var>>, ExprError> =
     match e.Node with
         (* First, if we have a variable, the type of expression is
            determined by the type of the variable.  If the variable is
            symbolic, then we have ambiguity. *)
-        | Identifier v ->
+        | Ast.Identifier v ->
             bind
                 (liftWithoutContext
                     (varF >> Reg >> ok)
                     (tliftOverCTyped >> tliftToExprDest)
                  >> mapMessages BadSub)
                 (wrapMessages Var (Env.lookup env scope) v)
-        | Symbolic sym ->
+        | Ast.Symbolic sym ->
             fail (AmbiguousSym sym)
         (* If we have an array, then work out what the type of the array's
            elements are, then walk back from there. *)
-        | ArraySubscript (arr, idx) ->
+        | Ast.ArraySubscript (arr, idx) ->
             let arrR = modelArrayExpr env scope varF arr
             // Indices always have to be of type 'int', and be in local scope.
             let idxuR = modelIntExpr env (indexScopeOf scope) varF idx
@@ -684,7 +687,7 @@ and modelExprWithType
   (env : Env)
   (scope : Scope)
   (varF : Var -> 'var)
-  (e : Expression)
+  (e : Ast.Expression)
   : Result<Expr<Sym<'var>>, ExprError> =
     match template with
     | Int _ -> lift (liftTypedSub Int) (modelIntExpr env scope varF e)
@@ -695,8 +698,8 @@ and modelBinaryExprPair
   (env : Env)
   (scope : Scope)
   (varF : Var -> 'var)
-  (l : Expression)
-  (r : Expression)
+  (l : Ast.Expression)
+  (r : Ast.Expression)
   : Result<Expr<Sym<'var>> * Expr<Sym<'var>>, ExprError> =
     let me = modelExpr env scope varF
     let met x = modelExprWithType x env scope varF
@@ -705,11 +708,11 @@ and modelBinaryExprPair
        model the non-symbol first and use its type as a crutch. *)
     let lR, rR =
         match l.Node, r.Node with
-        | Symbolic _, _ ->
+        | Ast.Symbolic _, _ ->
             let rR = me r
             let lR = bind (fun r -> met r l) rR
             (lR, rR)
-        | _, Symbolic _ ->
+        | _, Ast.Symbolic _ ->
             let lR = me l
             let rR = bind (fun l -> met l r) lR
             (lR, rR)
@@ -754,17 +757,17 @@ and modelBoolExpr
   (env : Env)
   (scope : Scope)
   (varF : Var -> 'var)
-  (expr : Expression) : Result<TypedBoolExpr<Sym<'var>>, ExprError> =
+  (expr : Ast.Expression) : Result<TypedBoolExpr<Sym<'var>>, ExprError> =
     let mi = modelIntExpr env scope varF
     let me = modelExpr env scope varF
     let ma = modelArrayExpr env scope varF
 
-    let rec mb (e : Expression) : Result<TypedBoolExpr<Sym<'var>>, ExprError> =
+    let rec mb (e : Ast.Expression) : Result<TypedBoolExpr<Sym<'var>>, ExprError> =
         match e.Node with
         // These two have a indefinite subtype.
-        | True -> ok (indefBool BTrue)
-        | False -> ok (indefBool BFalse)
-        | Identifier v ->
+        | Ast.True -> ok (indefBool BTrue)
+        | Ast.False -> ok (indefBool BFalse)
+        | Ast.Identifier v ->
             (* Look-up the variable to ensure it a) exists and b) is of a
              * Boolean type.
              *)
@@ -779,13 +782,13 @@ and modelBoolExpr
                              TypeMismatch
                                 (expected = Fuzzy "bool", got = Exact (typeOf vr)))))
                 (wrapMessages Var (Env.lookup env scope) v)
-        | Symbolic sa ->
+        | Ast.Symbolic sa ->
             (* Symbols have an indefinite subtype, and can include thread-local
                scope. *)
             lift
                 (Sym >> BVar >> indefBool)
                 (tryModelSolverExpression (modelExpr env (symbolicScopeOf scope) varF) sa)
-        | ArraySubscript (arr, idx) ->
+        | Ast.ArraySubscript (arr, idx) ->
             let arrR = ma arr
             // Indices always have to be of type 'int', and in local scope.
             let idxuR = modelIntExpr env (indexScopeOf scope) varF idx
@@ -797,24 +800,24 @@ and modelBoolExpr
                     | ABoolR r -> ok (mkTypedSub r (BIdx (arrE, idxE)))
                     | t -> fail (exprTypeMismatch (Fuzzy "bool[]") (Exact t)))
                 arrR idxR
-        | BopExpr(BoolOp as op, l, r) ->
+        | Ast.BopExpr(BoolOp as op, l, r) ->
             match op with
             | ArithIn as o ->
                 let oper =
                     match o with
-                    | Gt -> mkGt
-                    | Ge -> mkGe
-                    | Le -> mkLe
-                    | Lt -> mkLt
+                    | Ast.Gt -> mkGt
+                    | Ast.Ge -> mkGe
+                    | Ast.Le -> mkLe
+                    | Ast.Lt -> mkLt
                     | _ -> failwith "unreachable[modelBoolExpr::ArithIn]"
                 // We don't know the subtype of this yet...
                 lift indefBool (lift2 oper (mi l) (mi r))
             | BoolIn as o ->
                 let oper =
                     match o with
-                    | And -> mkAnd2
-                    | Or -> mkOr2
-                    | Imp -> mkImplies
+                    | Ast.And -> mkAnd2
+                    | Ast.Or -> mkOr2
+                    | Ast.Imp -> mkImplies
                     | _ -> failwith "unreachable[modelBoolExpr::BoolIn]"
 
                 (* Both sides of the expression need to be unifiable to the
@@ -835,8 +838,8 @@ and modelBoolExpr
             | AnyIn as o ->
                 let oper =
                     match o with
-                    | Eq -> mkEq
-                    | Neq -> mkNeq
+                    | Ast.Eq -> mkEq
+                    | Ast.Neq -> mkNeq
                     | _ -> failwith "unreachable[modelBoolExpr::AnyIn]"
                 (* If at least one of the operands is a symbol, we need to
                    try infer its type from the other operand.  Simply modelling
@@ -845,7 +848,7 @@ and modelBoolExpr
 
                 // We don't know the subtype of this yet...
                 lift indefBool (lift (uncurry oper) lrR)
-        | UopExpr (Neg,e) -> lift (mapTypedSub mkNot) (mb e)
+        | Ast.UopExpr (Ast.Neg,e) -> lift (mapTypedSub mkNot) (mb e)
         | _ ->
             fail
                 (ExprBadType
@@ -885,15 +888,15 @@ and modelIntExpr
   (env : Env)
   (scope : Scope)
   (varF : Var -> 'var)
-  (expr : Expression) : Result<TypedIntExpr<Sym<'var>>, ExprError> =
+  (expr : Ast.Expression) : Result<TypedIntExpr<Sym<'var>>, ExprError> =
     let me = modelExpr env scope varF
     let ma = modelArrayExpr env scope varF
 
-    let rec mi (e : Expression) =
+    let rec mi (e : Ast.Expression) =
         match e.Node with
         // Numbers have indefinite subtype.
-        | Num i -> ok (indefInt (IInt i))
-        | Identifier v ->
+        | Ast.Num i -> ok (indefInt (IInt i))
+        | Ast.Identifier v ->
             (* Look-up the variable to ensure it a) exists and b) is of an
              * arithmetic type.
              *)
@@ -908,12 +911,12 @@ and modelIntExpr
                                 (v,
                                  TypeMismatch
                                     (expected = Fuzzy "int", got = Exact (typeOf vr)))))
-         | Symbolic sa ->
+         | Ast.Symbolic sa ->
             // Symbols have indefinite subtype.
             lift
                 (Sym >> IVar >> indefInt)
                 (tryModelSolverExpression (modelExpr env (symbolicScopeOf scope) varF) sa)
-        | ArraySubscript (arr, idx) ->
+        | Ast.ArraySubscript (arr, idx) ->
             let arrR = ma arr
             // Indices always have to be of type 'int' and local scope.
             let idxuR = modelIntExpr env (indexScopeOf scope) varF idx
@@ -925,14 +928,14 @@ and modelIntExpr
                     | AnIntR ty -> ok (mkTypedSub ty (IIdx (arrE, idxE)))
                     | t -> fail (exprTypeMismatch (Fuzzy "int[]") (Exact (typeOf (liftTypedSub Array arrE)))))
                 arrR idxR
-        | BopExpr(ArithOp as op, l, r) ->
+        | Ast.BopExpr(ArithOp as op, l, r) ->
             let oper =
                 match op with
-                | Mul -> mkMul2
-                | Mod -> mkMod
-                | Div -> mkDiv
-                | Add -> mkAdd2
-                | Sub -> mkSub2
+                | Ast.Mul -> mkMul2
+                | Ast.Mod -> mkMod
+                | Ast.Div -> mkDiv
+                | Ast.Add -> mkAdd2
+                | Ast.Sub -> mkSub2
                 | _ -> failwith "unreachable[modelIntExpr]"
 
             bind2
@@ -985,13 +988,13 @@ and modelArrayExpr
   (env : Env)
   (scope : Scope)
   (varF : Var -> 'var)
-  (expr : Expression)
+  (expr : Ast.Expression)
   : Result<TypedArrayExpr<Sym<'var>>, ExprError> =
     let mi = modelIntExpr env scope varF
 
-    let rec ma (e : Expression) =
+    let rec ma (e : Ast.Expression) =
         match e.Node with
-        | Identifier v ->
+        | Ast.Identifier v ->
             (* Look-up the variable to ensure it a) exists and b) is of an
              * array type.
              *)
@@ -1006,12 +1009,12 @@ and modelArrayExpr
                                 (v,
                                  TypeMismatch
                                     (expected = Fuzzy "array", got = Exact (typeOf vr)))))
-        | Symbolic sym ->
+        | Ast.Symbolic sym ->
             (* TODO(CaptainHayashi): a symbolic array is ambiguously typed.
                Maybe when modelling we should take our 'best guess' at
                eltype and length from any subscripting expression? *)
             fail (AmbiguousSym sym)
-        | ArraySubscript (arr, idx) ->
+        | Ast.ArraySubscript (arr, idx) ->
             let arrR = ma arr
             // Indices always have to be of type 'int' and in local scope.
             let idxuR = modelIntExpr env Thread varF idx
@@ -1053,7 +1056,7 @@ let lookupFunc (protos : FuncDefiner<ProtoInfo>) (func : Func<_>)
 /// Matches a SigAtom against a prototype list, and models it as a DFunc.
 let modelDFunc
   (protos : FuncDefiner<ProtoInfo>)
-  (sa : SigAtom)
+  (sa : Ast.SigAtom)
   : Result<DFunc, ViewError> =
     let saFunc = regFunc sa.SAName sa.SAParams
     let protoR = lookupFunc protos saFunc
@@ -1066,17 +1069,17 @@ let modelDFunc
 /// Tries to convert a view def into its model (multiset) form.
 let rec modelViewSignature (protos : FuncDefiner<ProtoInfo>) =
     function
-    | ViewSignature.Unit -> ok Multiset.empty
-    | ViewSignature.Func atom ->
+    | Ast.Unit -> ok Multiset.empty
+    | Ast.Func atom ->
         let modelledR = modelDFunc protos atom
         let atomToView f = Multiset.singleton {Func = f; Iterator = None}
         lift atomToView modelledR
-    | ViewSignature.Join(l, r) ->
+    | Ast.Join(l, r) ->
         lift2
             Multiset.append
             (modelViewSignature protos l)
             (modelViewSignature protos r)
-    | ViewSignature.Iterated(atom, e) ->
+    | Ast.Iterated(atom, e) ->
         let modelledR = modelDFunc protos atom
 
         // Iterators have the 'int' subtype.
@@ -1107,7 +1110,7 @@ let rec varMapOfViewDef (vds : DView) : Result<VarMap, ViewError> =
 let modelViewDef
   (env : Env)
   (vprotos : FuncDefiner<ProtoInfo>)
-  (av : ViewSignature, ad : Expression option)
+  (av : Ast.ViewSignature, ad : Ast.Expression option)
   : Result<(DView * SVBoolExpr option), ModelError> =
     trial {
         let! vms = wrapMessages CEView (modelViewSignature vprotos) av
@@ -1298,23 +1301,23 @@ let modelViewDefs
     let injectOkay okay injectedAlready c =
         let injectedNow, rhs =
             match c with
-            | (ViewSignature.Unit, None) ->
+            | (Ast.Unit, None) ->
                 (fail (ConjoinDefAndIndef (fst c)), None)
-            | (ViewSignature.Unit, Some e) ->
+            | (Ast.Unit, Some e) ->
                 (lift (fun _ -> true) injectedAlready,
-                 Some (freshNode (BopExpr (And, e, okay))))
+                 Some (freshNode (Ast.BopExpr (Ast.And, e, okay))))
             | (_, r) -> (injectedAlready, r)
         (injectedNow, (fst c, rhs))
     let okayDefsR =
         match okay with
         | Some oname ->
-            let okay = freshNode (Identifier oname)
+            let okay = freshNode (Ast.Identifier oname)
             let injectedR, csI = mapAccumL (injectOkay okay) (ok false) cs
             lift
                 (fun injected ->
                     if injected
                     then csI
-                    else (ViewSignature.Unit, Some okay) :: csI)
+                    else (Ast.Unit, Some okay) :: csI)
                 injectedR
         | None -> ok cs
 
@@ -1343,10 +1346,14 @@ let modelViewDefs
 /// Models a part-desugared view func.
 let modelFunc
   (ctx : MethodContext)
-  (afunc : Func<Expression>)
+  (atom : Ast.AssertAtom)
   : Result<Func<Expr<Sym<Var>>>, ViewError> =
     // First, make sure this AFunc actually has a prototype
     // and the correct number of parameters.
+
+    // TODO(@MattWindsor91): hack.
+    let afunc = regFunc atom.AAName atom.AAArgs
+
     afunc
     |> lookupFunc ctx.ViewProtos
     |> bind (fun proto ->
@@ -1373,7 +1380,7 @@ let rec modelView
   (ast : DesugaredGView)
   : Result<IteratedGView<Sym<Var>>, ViewError> =
     let mkCView cfunc = Multiset.singleton ({ Func = cfunc; Iterator = None })
-    let mkCond (e : Expression) =
+    let mkCond (e : Ast.Expression) =
         (* Booleans in the condition position must be of type 'bool',
            not a subtype. *)
         let teR =
@@ -1415,7 +1422,7 @@ let rec modelView
 /// <param name="ex">The possible lvalue to model.</param>
 /// <returns>If the subject is a valid lvalue, the result expression.</returns>
 let modelLValue
-  (env : Env) (scope : Scope) (marker : Var -> 'Var) (ex : Expression)
+  (env : Env) (scope : Scope) (marker : Var -> 'Var) (ex : Ast.Expression)
   : Result<Expr<Sym<'Var>>, PrimError> =
     match ex with
     | RValue r -> fail (NeedLValue r)
@@ -1428,7 +1435,7 @@ let modelIntWithType
   (rtype : Type)
   (env : Env)
   (scope : Scope)
-  (expr : Expression)
+  (expr : Ast.Expression)
   : Result<TypedIntExpr<Sym<Var>>, PrimError> =
     // TODO(CaptainHayashi): proper doc comment.
     let eR = wrapMessages BadExpr (modelIntExpr env scope id) expr
@@ -1447,7 +1454,7 @@ let modelBoolWithType
   (rtype : Type)
   (env : Env)
   (scope : Scope)
-  (expr : Expression)
+  (expr : Ast.Expression)
   : Result<TypedBoolExpr<Sym<Var>>, PrimError> =
     // TODO(CaptainHayashi): proper doc comment.
     let eR = wrapMessages BadExpr (modelBoolExpr env scope id) expr
@@ -1478,8 +1485,8 @@ module private Prim =
     ///     A list of <see cref="PrimCommand"/>s representing the postfix, on
     ///     success; a <see cref="PrimError"/> otherwise.
     /// </returns>
-    let genPostfix (srcAST : Expression) (srcExpr : Expr<Sym<Var>>)
-      (postfix : FetchMode)
+    let genPostfix (srcAST : Ast.Expression) (srcExpr : Expr<Sym<Var>>)
+      (postfix : Ast.PostOp option)
       : Result<PrimCommand list, PrimError> =
         let mkIncOrDec cmd failure =
             (* For increments/decrements to make any sense,
@@ -1491,9 +1498,9 @@ module private Prim =
             | _ -> fail (NeedLValue srcAST)
 
         match postfix with
-        | Direct -> ok []
-        | Increment -> mkIncOrDec mkInc IncBool
-        | Decrement -> mkIncOrDec mkDec DecBool
+        | None -> ok []
+        | Some Ast.PlusPlus -> mkIncOrDec mkInc IncBool
+        | Some Ast.MinusMinus -> mkIncOrDec mkDec DecBool
 
 
     /// <summary>
@@ -1509,15 +1516,14 @@ module private Prim =
     /// <param name="src">The source expression.</param>
     /// <param name="postfix">
     ///     The postfix operator for the rvalue.
-    ///     For Booleans, only <c>Direct</c> is allowed.
     /// </param>
     /// <returns>
     ///     On success, the command representing the assignment;
     ///     else, the corresponding error.
     /// </returns>
     let modelAssign
-      (env : Env) (scope : Scope) (dest : Expression) (src : Expression)
-      (postfix : FetchMode)
+      (env : Env) (scope : Scope) (dest : Ast.Expression) (src : Ast.Expression)
+      (postfix : Ast.PostOp option)
       : Result<PrimCommand list, PrimError> =
         let modelWithExprs (dstE : Expr<Sym<Var>>) (srcE : Expr<Sym<Var>>) =
             match unifyTypedPair dstE srcE with
@@ -1560,7 +1566,7 @@ module private Prim =
     ///     else, the corresponding error.
     /// </returns>
     let modelCAS
-      (env : Env) (scope : Scope) (dest : Expression) (test : Expression) (set : Expression)
+      (env : Env) (scope : Scope) (dest : Ast.Expression) (test : Ast.Expression) (set : Ast.Expression)
       : Result<PrimCommand, PrimError> =
         (* dest, test, and set must agree on type.
            The type of dest and test influences how we interpret set. *)
@@ -1620,16 +1626,14 @@ module private Prim =
     ///     else, the corresponding error.
     /// </returns>
     let modelPostfix
-      (env : Env) (operand : Expression) (mode : FetchMode)
+      (env : Env) (operand : Ast.Expression) (mode : Ast.PostOp)
       : Result<PrimCommand, PrimError> =
         let modelWithOperand opE =
             match mode, opE with
-            // Direct in this case is a nop, so we forbid it.
-            | Direct, _ -> fail Useless
-            | Increment, Typed.Bool _ -> fail (IncBool operand)
-            | Decrement, Typed.Bool _ -> fail (DecBool operand)
-            | Increment, Typed.Int (rc, e) -> ok (opE *<- Expr.Int (rc, mkInc e))
-            | Decrement, Typed.Int (rc, e) -> ok (opE *<- Expr.Int (rc, mkDec e))
+            | Ast.PlusPlus, Typed.Bool _ -> fail (IncBool operand)
+            | Ast.MinusMinus, Typed.Bool _ -> fail (DecBool operand)
+            | Ast.PlusPlus, Typed.Int (rc, e) -> ok (opE *<- Expr.Int (rc, mkInc e))
+            | Ast.MinusMinus, Typed.Int (rc, e) -> ok (opE *<- Expr.Int (rc, mkDec e))
             | _, Typed.Array (_) -> fail (PrimNotImplemented "array postfix")
         bind modelWithOperand (modelLValue env Any id operand)
 
@@ -1650,16 +1654,16 @@ module private Prim =
     ///     else, the corresponding error.
     /// </returns>
     let model
-      (env : Env) (scope : Scope) (primAST : Prim)
+      (env : Env) (scope : Scope) (primAST : Ast.Prim)
       : Result<PrimCommand list, PrimError> =
-        let rec prim (n : Prim) =
+        let rec prim (n : Ast.Prim) =
             match n.Node with
-            | CompareAndSwap(dest, test, set) ->
+            | Ast.CompareAndSwap(dest, test, set) ->
                 lift List.singleton (modelCAS env scope dest test set)
-            | Fetch(dest, src, mode) -> modelAssign env scope dest src mode
-            | Postfix(operand, mode) ->
+            | Ast.Fetch(dest, src, mode) -> modelAssign env scope dest src mode
+            | Ast.Postfix(operand, mode) ->
                 lift List.singleton (modelPostfix env operand mode)
-            | Assume e ->
+            | Ast.Assume e ->
                 let eModelR = wrapMessages BadExpr (modelBoolExpr env scope id) e
 
                 // An assumption needs to be of type 'bool', not a subtype.
@@ -1670,10 +1674,10 @@ module private Prim =
                         eModelR
 
                 lift (Microcode.Assume >> List.singleton) eBoolR
-            | Havoc var ->
+            | Ast.Havoc var ->
                 let varMR = mapMessages SymVarError (Env.lookup env scope var)
                 lift (mapCTyped Reg >> mkVarExp >> havoc >> List.singleton) varMR
-            | SymCommand sym ->
+            | Ast.SymCommand sym ->
                 // TODO(CaptainHayashi): split out.
                 let symMR =
                     (tryModelSolverExpression
@@ -1724,7 +1728,7 @@ let modelAtomic (env : Env) (atomicAST : DesugaredAtomic)
 /// Creates a partially resolved axiom for an if-then-else.
 let rec modelITE
   (ctx : MethodContext)
-  (i : Expression)
+  (i : Ast.Expression)
   (t : FullBlock<ViewExpr<DesugaredGView>, FullCommand>)
   (fo : FullBlock<ViewExpr<DesugaredGView>, FullCommand> option)
   : Result<ModellerPartCmd, MethodError> =
@@ -1756,7 +1760,7 @@ let rec modelITE
 and modelWhile
   (isDo : bool)
   (ctx : MethodContext)
-  (e : Expression)
+  (e : Ast.Expression)
   (b : FullBlock<ViewExpr<DesugaredGView>, FullCommand>)
   : Result<ModellerPartCmd, MethodError> =
     (* A while is also not fully resolved.
@@ -1782,7 +1786,7 @@ and modelWhile
 /// Converts a PrimSet to a PartCmd.
 and modelPrimSet
   (ctx : MethodContext)
-  ({ PreLocals = ps; Atomics = ts; PostLocals = qs } : PrimSet<DesugaredAtomic>)
+  ({ PreLocals = ps; Atomics = ts; PostLocals = qs } : Ast.PrimSet<DesugaredAtomic>)
   : Result<ModellerPartCmd, MethodError> =
 
     let mLocal = wrapMessages BadLocal (Prim.model ctx.Env Thread)
@@ -1811,8 +1815,8 @@ and modelCommand
 
 /// Converts a view expression into a CView.
 and modelViewExpr (ctx : MethodContext)
-  (vnode : Node<ViewExpr<DesugaredGView>>)
-  : Result<Node<ModellerViewExpr>, ViewError> =
+  (vnode : AstNode.Node<ViewExpr<DesugaredGView>>)
+  : Result<AstNode.Node<ModellerViewExpr>, ViewError> =
     let renodify v = vnode |=> v
 
     match vnode.Node with
@@ -1822,8 +1826,8 @@ and modelViewExpr (ctx : MethodContext)
 /// Converts a pair of view and command.
 and modelViewedCommand
   (ctx : MethodContext)
-  (vc : FullCommand * Node<ViewExpr<DesugaredGView>>)
-      : Result<ModellerPartCmd * Node<ModellerViewExpr>, MethodError> =
+  (vc : FullCommand * AstNode.Node<ViewExpr<DesugaredGView>>)
+      : Result<ModellerPartCmd * AstNode.Node<ModellerViewExpr>, MethodError> =
     let command, post = vc
     lift2 mkPair
           (modelCommand ctx command)
@@ -1844,7 +1848,7 @@ and modelBlock
 let modelMethod
   (ctx : MethodContext)
   (n : string)
-  (b : Node<FullBlock<ViewExpr<DesugaredGView>, FullCommand>>)
+  (b : AstNode.Node<FullBlock<ViewExpr<DesugaredGView>, FullCommand>>)
   : Result<string * ModellerBlock, ModelError> =
     let bmR =
         mapMessages
@@ -1894,28 +1898,28 @@ let modelViewProtos (protos : #(DesugaredViewProto seq))
 ///     corresponding type; otherwise, an error.
 /// </returns>
 let convertTypedVar
-  (lit : AST.Types.TypeLiteral)
+  (lit : Ast.TypeLiteral)
   (name : string)
-  (types : Map<string, TypeLiteral>)
+  (types : Map<string, Ast.TypeLiteral>)
   : Result<TypedVar, TypeError> =
     let rec convType currentTypedef =
         function
         // TODO(CaptainHayashi): make typedefs less awful
-        | TInt ->
+        | Ast.TInt ->
             let tr = maybe normalRec (fun t -> { PrimSubtype = Named t }) currentTypedef
             ok (Int (tr, ()))
-        | TBool ->
+        | Ast.TBool ->
             let tr = maybe normalRec (fun t -> { PrimSubtype = Named t }) currentTypedef
             ok (Bool (tr, ()))
-        | TUser ty ->
+        | Ast.TUser ty ->
             match types.TryFind ty with
             // TODO(CaptainHayashi): this is to prevent recursion, but is too strong
-            | Some (TUser _) -> fail (ImpossibleType (lit, "Typedef cannot reference a typedef"))
-            | Some (TArray _) -> fail (ImpossibleType (lit, "Typedef cannot reference array type"))
+            | Some (Ast.TUser _) -> fail (ImpossibleType (lit, "Typedef cannot reference a typedef"))
+            | Some (Ast.TArray _) -> fail (ImpossibleType (lit, "Typedef cannot reference array type"))
             | Some t -> convType (Some ty) t
             // TODO(CaptainHayashi): bad error
             | None -> fail (ImpossibleType (lit, "Used nonexistent typedef"))
-        | TArray (len, elt) ->
+        | Ast.TArray (len, elt) ->
             lift
                 (fun eltype -> Array ({ ElementType = eltype; Length = Some len }, ()))
                 (convType None elt)
@@ -1934,8 +1938,8 @@ let convertTypedVar
 ///     corresponding variable map of the variables; otherwise, an error.
 /// </returns>
 let modelVarMap
-  (types : Map<string, TypeLiteral>)
-  (tvs : (TypeLiteral * string) list)
+  (types : Map<string, Ast.TypeLiteral>)
+  (tvs : (Ast.TypeLiteral * string) list)
   (scope : string)
   : Result<VarMap, ModelError> =
     let cvt (t, v) = mapMessages (curry BadVarType v) (convertTypedVar t v types)
@@ -1953,31 +1957,51 @@ let modelVarMap
 ///     corresponding type; otherwise, an error.
 /// </returns>
 let convertParam
-  (types : Map<string, TypeLiteral>)
-  (par : AST.Types.Param) : Result<TypedVar, TypeError> =
-    let { ParamType = ptype; ParamName = pname } = par
+  (types : Map<string, Ast.TypeLiteral>)
+  (par : Ast.Param) : Result<TypedVar, TypeError> =
+    let { Ast.ParamType = ptype; Ast.ParamName = pname } = par
     convertTypedVar ptype pname types
+
+// TODO(@MattWindsor91): need to get rid of this.
+let funcifyExistingProtos (atoms: Ast.ProAtom seq): GeneralViewProto<Ast.Param> seq =
+    // TODO(@MattWindsor91): most of these functions are misnomers now.
+    let funcify (atom: Ast.ProAtom) =
+        let func = regFunc atom.PAName atom.PAParams
+        if atom.PAIterated
+        then WithIterator func
+        // TODO(@MattWindsor91): hardcoding bad IsAnonymous value here.
+        else NoIterator (func, false)
+    
+    Seq.map funcify atoms
 
 /// <summary>
 ///     Converts view prototypes from the Starling language's type system
 ///     to Starling's type system.
 /// </summary>
 let convertViewProtos
-  (types : Map<string, TypeLiteral>)
-  (vps : ViewProto seq)
+  (types : Map<string, Ast.TypeLiteral>)
+  (vps : GeneralViewProto<Ast.Param> seq)
   : Result<DesugaredViewProto list, ModelError> =
     // TODO(CaptainHayashi): proper doc comment.
-    let convertViewFunc vp func =
-        let conv = wrapMessages (fun (p, e) -> BadVProtoParamType (vp, p, e)) (convertParam types)
-        let ps'Result = func.Params |> List.map conv |> collect
-        lift (Func.updateParams func) ps'Result
+    let convertViewProto (vp: GeneralViewProto<Ast.Param>) =
+        // TODO(@MattWindsor91): hack
+        let (fn, isIterated) =
+            match vp with
+            | WithIterator f -> (f, true)
+            | NoIterator (f, _) -> (f, false)
+        let atom = Ast.proAtom fn.Name fn.Params isIterated 
 
-    let convertViewProto vp =
-        match vp with
-        | NoIterator (func, isAnonymous) ->
-            lift (fun f -> NoIterator (f, isAnonymous)) (convertViewFunc vp func)
-        | WithIterator func ->
-            lift WithIterator (convertViewFunc vp func)
+        let conv = wrapMessages (fun (p, e) -> BadVProtoParamType (atom, p, e)) (convertParam types)
+        let ps'Result = atom.PAParams |> List.map conv |> collect
+        let nfunc'Result = lift (fun ps -> func fn.Name ps fn.FuncType) ps'Result 
+
+        // TODO(@MattWindsor91): this is horrendous and needs to go.
+        let updatevp nfunc =
+            match vp with
+            | WithIterator _ -> WithIterator nfunc
+            | NoIterator (_, i) -> NoIterator (nfunc, i)
+
+        lift updatevp nfunc'Result
 
     collect (Seq.map convertViewProto vps)
 
@@ -1995,7 +2019,9 @@ let model
         let! tvars = modelVarMap types desugarContext.ThreadVars "thread"
         let env = Env.env tvars svars
 
-        let sprotos = Seq.append desugarContext.GeneratedProtos desugarContext.ExistingProtos
+        let eprotos = funcifyExistingProtos desugarContext.ExistingProtos
+
+        let sprotos = Seq.append desugarContext.GeneratedProtos eprotos
         let! cprotos = convertViewProtos types sprotos
         let! vprotos = modelViewProtos cprotos
 
@@ -2011,7 +2037,7 @@ let model
             |> collect
             |> lift Map.ofSeq
 
-        let pragmata = List.map (fun p -> (p.Key, p.Value)) collated.Pragmata
+        let pragmata = List.map (fun (p: Ast.Pragma) -> (p.Key, p.Value)) collated.Pragmata
 
         return
             { Pragmata = pragmata

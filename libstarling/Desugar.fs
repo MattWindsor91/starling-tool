@@ -6,9 +6,37 @@ module Starling.Lang.Desugar
 open Starling.Collections
 open Starling.Utils
 open Starling.Core.View
+open CViews.Ast
+open CViews.AstNode
 open Starling.Core.Var
-open Starling.Lang.AST
 open Starling.Lang.Collator
+
+// TODO(@MattWindsor91): this type exists mainly to patch up between refactors
+// and should be got rid of.
+
+type GeneralViewProto<'Param> =
+    // TODO(@MattWindsor91): a lot of this is old and redundant.
+    /// <summary>
+    ///     A non-iterated view prototype; can be anonymous.
+    /// </summary>
+    | NoIterator of Func : Func<'Param> * IsAnonymous : bool
+    /// <summary>
+    ///     An iterated view prototype; cannot be anonymous
+    /// </summary>
+    | WithIterator of Func: Func<'Param>
+
+let gprotoName (p: GeneralViewProto<'Param>): string =
+    match p with
+    | NoIterator (f, _) -> f.Name
+    | WithIterator f -> f.Name
+
+/// Pretty-prints a general view prototype.
+let printGeneralViewProto (pParam : 'Param -> Starling.Core.Pretty.Doc)(vp : GeneralViewProto<'Param>) : Starling.Core.Pretty.Doc =
+    match vp with
+    | NoIterator (Func = { Name = n; Params = ps }; IsAnonymous = _) ->
+        Starling.Core.Pretty.func n (List.map pParam ps)
+    | WithIterator (Func = { Name = n; Params = ps }) ->
+        Starling.Core.Pretty.hsep2 (Starling.Core.Pretty.String " ") (Starling.Core.Pretty.String "iter") (Starling.Core.Pretty.func n (List.map pParam ps))
 
 /// <summary>
 ///     A partly modelled view prototype, whose parameters use Starling's type
@@ -17,14 +45,9 @@ open Starling.Lang.Collator
 type DesugaredViewProto = GeneralViewProto<TypedVar>
 
 /// <summary>
-///     A desugared view atom, ready for modelling.
-/// </summary>
-type DesugaredFunc = Func<AST.Types.Expression>
-
-/// <summary>
 ///     A desugared guarded func, ready for modelling.
 /// </summary>
-type DesugaredGFunc = AST.Types.Expression * DesugaredFunc
+type DesugaredGFunc = Expression * AssertAtom
 
 /// <summary>
 ///     A desugared guarded view, ready for modelling.
@@ -45,9 +68,9 @@ type DesugarContext =
       /// <summary>The name of the local lift view, if any.</summary>
       LocalLiftView : string option
       /// <summary>The list of fresh views generated.</summary>
-      GeneratedProtos : Set<ViewProto>
+      GeneratedProtos : Set<GeneralViewProto<Param>>
       /// <summary>The list of views already present in the system.</summary>
-      ExistingProtos : Set<ViewProto>
+      ExistingProtos : Set<ProAtom>
       /// <summary>The name of the 'ok' Boolean, if any.</summary>
       OkayBool : string option
     }
@@ -157,7 +180,7 @@ module Pretty =
         let pv (g, b) =
             String "if"
             <+> parened (printExpression g)
-            <+> braced (func b.Name (List.map printExpression b.Params))
+            <+> braced (printAssertAtom b)
         hsepStr " * " (List.map pv v)
 
     /// <summary>
@@ -213,13 +236,6 @@ module Pretty =
     ///     The <see cref="Doc"/> representing <paramref name="fc"/>.
     /// </returns>
     and printFullCommand (fc : FullCommand) : Doc = printFullCommand' fc.Node
-
-let protoName (p : GeneralViewProto<'P>) : string =
-    // TODO(MattWindsor91): doc comment.
-    match p with
-    | NoIterator (f, _) -> f.Name
-    | WithIterator f -> f.Name
-
 
 /// <summary>
 ///    Fresh object generators for desugaring.
@@ -285,7 +301,7 @@ module private Generators =
             // Can't union-map because the proto types are different.
             Set.union
                 (Set.map protoName ctx.ExistingProtos)
-                (Set.map protoName ctx.GeneratedProtos)
+                (Set.map gprotoName ctx.GeneratedProtos)
 
         let newName = genName vnames (ftype.ToString ())
         let newProto =
@@ -376,8 +392,8 @@ module private LocalRewriting =
     and rewriteExpression (ctx : BlockContext) (expr: Expression) =
         expr |>> rewriteExpression' ctx
 
-    let rewriteAFunc (ctx : BlockContext) (func : AFunc) : AFunc =
-        Func.updateParams func (List.map (rewriteExpression ctx) func.Params) 
+    let rewriteAFunc (ctx : BlockContext) (func : AssertAtom) : AssertAtom =
+        {func with AAArgs = List.map (rewriteExpression ctx) func.AAArgs } 
     let rec rewritePrim (ctx : BlockContext) prim =
         let rewritePrim' =
             function
@@ -433,7 +449,7 @@ module private LocalRewriting =
 /// </returns>
 let desugarView
   (ctx : BlockContext)
-  (view : AST.Types.View)
+  (view : View)
   : BlockContext * DesugaredGView =
     let rec desugarIn suffix c v =
         match v with
@@ -447,7 +463,7 @@ let desugarView
             let (dc', liftName) = Generators.genLifter c.DCtx
             let c' = { c with DCtx = dc' }
             desugarIn suffix c'
-                (Func { Name = liftName; Params = [e]; FuncType = LocalSynth })
+                (Func { AAName = liftName; AAArgs = [e] })
         | Func v -> (c, [ (suffix, LocalRewriting.rewriteAFunc ctx v) ])
         | Join (x, y) -> desugarJoin c suffix x suffix y
         | View.If (i, t, eo) ->
@@ -509,7 +525,7 @@ let desugarMarkedView (ctx : BlockContext) (marked : Marked<View>)
 
         let dctx, vname = Generators.genView UnknownSynth tpars ctx.DCtx
         ({ ctx with DCtx = dctx },
-         Advisory [ (freshNode True, func vname texprs UnknownSynth ) ])
+         Advisory [ (freshNode True, assertAtom vname texprs ) ])
 
 /// <summary>
 ///     Desugars an atomic command.
@@ -530,7 +546,7 @@ let rec desugarAtomic (ctx : BlockContext) (a : Atomic)
                 (Fetch
                     (freshNode (Identifier ok),
                     LocalRewriting.rewriteExpression ctx k,
-                    Direct))
+                    None))
 
         ({ ctx with DCtx = dctx }, DAPrim assignOk)
     | AError ->
@@ -737,7 +753,7 @@ and desugarBlock (ctx : BlockContext) (block : Command list)
 let initialContext
   (svars : (TypeLiteral * string) seq)
   (tvars : (TypeLiteral * string) seq)
-  (vprotos : ViewProto seq)
+  (vprotos : ProAtom seq)
   : DesugarContext =
     { SharedVars = List.ofSeq svars
       ThreadVars = List.ofSeq tvars
@@ -782,11 +798,11 @@ let desugar
         initialContext collated.SharedVars collated.ThreadVars collated.VProtos
 
     let desugarMethod ctx mnode =
-        let { Signature = sigt; Body = body } = mnode.Node
+        let m = mnode.Node
         let pos = mnode.Position
-        let ctxP = LocalRewriting.desugarMethodParams ctx sigt.Params pos
-        let ctxB, bodyB = desugarBlock ctxP body
-        (ctxB.DCtx, (sigt.Name, mnode |=> bodyB))
+        let ctxP = LocalRewriting.desugarMethodParams ctx m.MParams pos
+        let ctxB, bodyB = desugarBlock ctxP m.MBody
+        (ctxB.DCtx, (m.MName, mnode |=> bodyB))
 
     let ctxM, methodsM = mapAccumL desugarMethod ctx collated.Methods
 

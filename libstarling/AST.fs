@@ -1,270 +1,12 @@
-﻿/// <summary>
-///    The abstract syntax tree for the CViews language.
-/// </summary>
+﻿/// Old AST stuff not yet ported properly to libcviews.
 module Starling.Lang.AST
+
+open CViews.Ast
+open CViews.AstNode
 
 open Starling
 open Starling.Collections
 open Starling.Core.Var.Types
-
-
-/// <summary>
-///     Types used in the AST.
-/// </summary>
-[<AutoOpen>]
-module Types =
-    /// A Boolean operator.
-    type BinOp =
-        | Mul // a * b
-        | Div // a / b
-        | Mod // a % b
-        | Add // a + b
-        | Sub // a - b
-        | Gt // a > b
-        | Ge // a >= b
-        | Le // a <= b
-        | Lt // a < b
-        | Imp // a => b
-        | Eq // a == b
-        | Neq // a != b
-        | And // a && b
-        | Or // a || b
-
-    /// A unary operator.
-    type UnOp =
-        | Neg // ! a
-
-    /// An untyped, raw expression.
-    /// These currently cover all languages, but this may change later.
-    type Expression' =
-        | True // true
-        | False // false
-        | Num of int64 // 42
-        | Identifier of string // foobaz
-        | Symbolic of SolverExpression // %{foo}(exprs)
-        | BopExpr of BinOp * Expression * Expression // a BOP b
-        | UopExpr of UnOp * Expression // UOP a
-        | ArraySubscript of array : Expression * subscript : Expression
-    /// <summary>
-    ///     A fragment of a solver expression AST.
-    /// </summary>
-    and SolverExpressionWord =
-        /// <summary>
-        ///     A string part of a symbolic sentence.
-        /// </summary>
-        | SEString of string
-        /// <summary>
-        ///     An argument part of a symbolic sentence.
-        /// </summary>
-        | SEArg of Node<Expression'>
-    and SolverExpression = Node<SolverExpressionWord> list
-    and Expression = Node<Expression'>
-
-    /// <summary>
-    ///     A primitive command.
-    /// </summary>
-    type Prim' =
-        | CompareAndSwap of
-            src : Expression
-            * test : Expression
-            * dest : Expression // <CAS(a, b, c)>
-        | Fetch of Expression * Expression * FetchMode // <a = b??>
-        | Postfix of Expression * FetchMode // <a++> or <a-->
-        | Assume of Expression // <assume(e)>
-        | SymCommand of symbol : SolverExpression // %{xyz}(x, y)
-        | Havoc of var : string // havoc var
-    and Prim = Node<Prim'>
-
-    /// <summary>
-    ///     An atomic action.
-    /// </summary>
-    type Atomic' =
-        /// <summary>An atomic primitive.</summary>
-        | APrim of Prim
-        /// <summary>
-        ///     A failure command.
-        ///     This is semantically equivalent to <c>AAssert False</c>.
-        /// </summary>
-        | AError
-        /// <summary>An assertion.</summary>
-        | AAssert of cond : Expression
-        /// <summary>An atomic conditional.</summary>
-        | ACond of
-            cond : Expression
-            * trueBranch : Atomic list
-            * falseBranch : (Atomic list) option
-    and Atomic = Node<Atomic'>
-
-    /// <summary>
-    ///     A view, annotated with additional syntax.
-    ///
-    ///     <para>
-    ///         This is modelled as Starling's <c>ViewExpr</c>, which
-    ///         cannot be <c>Unknown</c>.
-    ///     </para>
-    /// </summary>
-    /// <typeparam name="view">
-    ///     The type of view wrapped inside this expression.
-    /// </typeparam>
-    type Marked<'view> =
-        /// <summary>
-        ///     An unannotated view.
-        /// </summary>
-        | Unmarked of 'view
-        /// <summary>
-        ///     A ?-annotated view.
-        /// </summary>
-        | Questioned of 'view
-        /// <summary>
-        ///     An unknown view.
-        /// </summary>
-        | Unknown
-
-    /// An AST func.
-    type AFunc = Func<Expression>
-
-    /// A view atom appearing in a signature.
-    type SigAtom =
-        { SAName: string
-          SAParams: string list }
-    
-    /// Constructs a SigAtom.
-    let sigAtom (name: string) (pars: string list): SigAtom =
-        { SAName = name; SAParams = pars }
-
-    /// <summary>
-    ///     An AST type literal.
-    ///     <para>
-    ///         This is kept separate from the Starling type system to allow
-    ///         it to become more expressive later on (eg typedefs).
-    ///     </para>
-    /// </summary>
-    type TypeLiteral =
-        /// <summary>An integer type.</summary>
-        | TInt
-        /// <summary>A Boolean type.</summary>
-        | TBool
-        /// <summary>An unknown, and probably user-defined, type.</summary>
-        | TUser of name : string
-        /// <summary>An array type.</summary>
-        | TArray of length : int * contentT : TypeLiteral
-
-    /// <summary>
-    ///     An AST formal parameter declaration.
-    /// </summary>
-    type Param =
-        { /// <summary>The type of the parameters.</summary>
-          ParamType : TypeLiteral
-          /// <summary>The names of the parameters.</summary>
-          ParamName : string
-        }
-
-    /// A view prototype.
-    type GeneralViewProto<'Param> =
-        /// <summary>
-        ///     A non-iterated view prototype; can be anonymous.
-        /// </summary>
-        | NoIterator of Func : Func<'Param> * IsAnonymous : bool
-        /// <summary>
-        ///     An iterated view prototype; cannot be anonymous
-        /// </summary>
-        | WithIterator of Func: Func<'Param>
-
-    /// A view prototype with Param parameters.
-    type ViewProto = GeneralViewProto<Param>
-
-    /// A view as seen on the LHS of a ViewDef.
-    type ViewSignature =
-        | Unit
-        | Join of ViewSignature * ViewSignature
-        | Func of SigAtom
-        | Iterated of SigAtom * string
-
-    /// <summary>
-    ///     An AST variable declaration.
-    /// </summary>
-    type VarDecl =
-        { /// <summary>The type of the variables.</summary>
-          VarType : TypeLiteral
-          /// <summary>The names of the variables.</summary>
-          VarNames : string list
-        }
-
-    /// A view.
-    type View =
-          /// <summary>The unit view, `emp`.</summary>
-        | Unit
-          /// <summary>The always-false view, `false`.</summary>
-        | Falsehood
-          /// <summary>A `*`-conjunction of two views.</summary>
-        | Join of View * View
-          /// <summary>An abstract-predicate view.</summary>
-        | Func of AFunc
-          /// <summary>A local view, `local { P }`.</summary>
-        | Local of Expression
-          /// <summary>A conditional view, `if P { V1 } [else { V2 }]`.</summary>
-        | If of Expression * View * View option
-
-    /// A set of primitives.
-    type PrimSet<'Atomic> =
-        { PreLocals: Prim list
-          Atomics: 'Atomic list
-          PostLocals: Prim list }
-
-    /// A statement in the command language.
-    type Command' =
-        /// A view expression.
-        | ViewExpr of Marked<View>
-        /// <summary>A variable declaration.</summary>
-        | VarDecl of VarDecl
-        /// <summary>
-        ///     A miracle command.
-        ///     Miracles atomically establish their postcondition.
-        /// </summary>
-        | Miracle
-        /// A set of sequentially composed primitives.
-        | Prim of PrimSet<Atomic>
-        /// An if-then-else statement, with optional else.
-        | If of ifCond : Expression
-              * thenBlock : Command list
-              * elseBlock : Command list option
-        /// A while loop.
-        | While of Expression * Command list
-        /// A do-while loop.
-        | DoWhile of Command list
-                   * Expression // do { b } while (e)
-        /// A list of parallel-composed blocks.
-        | Blocks of Command list list
-    and Command = Node<Command'>
-
-    /// A method.
-    type Method<'cmd> =
-        { Signature : Func<Param> // main (argv, argc) ...
-          Body : 'cmd list } // ... { ... }
-
-    /// <summary>
-    ///     A directive for adding backend-specific information.
-    /// </summary>
-    type Pragma =
-        { ///<summary>The key of the pragma.</summary>
-          Key : string
-          ///<summary>The value of the pragma.</summary>
-          Value : string }
-
-    /// A top-level item in a Starling script.
-    type ScriptItem' =
-        | Pragma of Pragma // pragma ...;
-        | Typedef of TypeLiteral * string // typedef int Node;
-        | SharedVars of VarDecl // shared int name1, name2, name3;
-        | ThreadVars of VarDecl // thread int name1, name2, name3;
-        | Method of Method<Command> // method main(argv, argc) { ... }
-        | Search of int // search 0;
-        | ViewProtos of ViewProto list // view name(int arg);
-        | Constraint of ViewSignature * Expression option // constraint emp => true
-        | Exclusive of SigAtom list // exclusive p(x), q(x), r(x)
-        | Disjoint of SigAtom list // disjoint p(x), q(x), r(x)
-        override this.ToString() = sprintf "%A" this
-    and ScriptItem = Node<ScriptItem'>
 
 /// <summary>
 ///     Pretty printers for the AST.
@@ -272,8 +14,6 @@ module Types =
 module Pretty =
     open Starling.Collections.Func.Pretty
     open Starling.Core.Pretty
-    open Starling.Core.Symbolic.Pretty
-    open Starling.Core.TypeSystem.Pretty
     open Starling.Core.Var.Pretty
 
     /// <summary>
@@ -284,7 +24,12 @@ module Pretty =
         /// This does not include the curly braces.
         let printBlock (pCmd : 'Cmd -> Doc) (c : 'Cmd list) : Doc =
             ivsep (List.map (pCmd >> Indent) c)
-
+               
+    /// Prints a source position.
+    let printPosition (pos : SourcePosition) : Doc =
+        String pos.StreamName
+        <-> String ":" <-> String (sprintf "%d" pos.Line)
+        <-> String ":" <-> String (sprintf "%d" pos.Column)
 
     /// Pretty-prints Boolean operations.
     let printBinOp : BinOp -> Doc =
@@ -305,7 +50,7 @@ module Pretty =
         | Or -> "||"
         >> String >> syntax
 
-    let printUnOp : UnOp -> Doc =
+    let printPreOp : PreOp -> Doc =
         function
         | Neg -> "!"
         >> String >> syntax
@@ -325,7 +70,7 @@ module Pretty =
                    printExpression b ]
             |> parened
         | UopExpr(op, a) ->
-            hsep [ printUnOp op
+            hsep [ printPreOp op
                    printExpression a ]
         | ArraySubscript (array, subscript) ->
             printExpression array <-> squared (printExpression subscript)
@@ -389,10 +134,55 @@ module Pretty =
         : Doc =
             printITELike (Helpers.printBlock pCmd) cond thenCmds elseCmds
 
+    /// <summary>
+    ///     Pretty-prints a type literal.
+    /// </summary>
+    /// <param name="lit">The <see cref="TypeLiteral"/> to print.</param>
+    /// <returns>
+    ///     A <see cref="Doc"/> representing the given type literal.
+    /// </returns>
+    let printTypeLiteral (lit : TypeLiteral) : Doc =
+        let rec pl lit suffix =
+            match lit with
+            | TInt -> syntaxIdent (String ("int")) <-> suffix
+            | TBool -> syntaxIdent (String ("bool")) <-> suffix
+            | TUser s -> syntaxLiteral (String s) <-> suffix
+            | TArray (len, contents) ->
+                let lenSuffix = squared (String (sprintf "%d" len))
+                pl contents (suffix <-> lenSuffix)
+        pl lit Nop
+
+    /// Pretty-prints parameters.
+    let printParam (par : Param) : Doc =
+        hsep
+            [ printTypeLiteral par.ParamType
+              syntaxLiteral (String par.ParamName) ]
+
+    /// Pretty-prints assertion view atoms.
+    let printAssertAtom (a: AssertAtom): Doc =
+        func a.AAName (List.map printExpression a.AAArgs)
+
+    /// Pretty-prints prototype view atoms.
+    let printProtoAtom (a: ProAtom): Doc =
+        let ap = func a.PAName (List.map printParam a.PAParams)
+        if a.PAIterated
+        then String "iter" <+> ap
+        else ap
+
+    /// Pretty-prints a list of prototype view atoms.
+    let printProtoAtomList (vps : ProAtom list) : Doc =
+        hsep [ syntax (String "view")
+               commaSep (List.map printProtoAtom vps) ]
+        |> withSemi
+
+    /// Pretty-prints signature view atoms.
+    let printSigAtom (a: SigAtom): Doc =
+        func a.SAName (List.map String a.SAParams)
+
     /// Pretty-prints views.
     let rec printView : View -> Doc =
         function
-        | View.Func f -> printFunc printExpression f
+        | View.Func f -> printAssertAtom f
         | View.Unit -> String "emp" |> syntaxView
         | View.Falsehood -> String "false" |> syntaxView
         | View.Join(l, r) -> binop "*" (printView l) (printView r)
@@ -406,11 +196,7 @@ module Pretty =
         | Questioned v -> hjoin [ pView v ; String "?" |> syntaxView ]
         | Unknown -> String "?" |> syntaxView
         >> ssurround "{| " " |}"
-
-    /// Pretty-prints signature view atoms.
-    let printSigAtom (a: SigAtom): Doc =
-        func a.SAName (List.map String a.SAParams)
-
+ 
     /// Pretty-prints view definitions.
     let rec printViewSignature : ViewSignature -> Doc =
         function
@@ -441,12 +227,11 @@ module Pretty =
               (List.map printSigAtom xs))
         |> withSemi
 
-    /// Pretty-prints fetch modes.
-    let printFetchMode : FetchMode -> Doc =
-        function
-        | Direct -> Nop
-        | Increment -> String "++"
-        | Decrement -> String "--"
+    /// Pretty-prints postfix operators.
+    let printPostOp (o: PostOp): Doc =
+        match o with
+        | PlusPlus -> String "++"
+        | MinusMinus -> String "--"
 
     /// Pretty-prints local assignments.
     let printAssign (dest : Expression) (src : Expression) : Doc =
@@ -465,12 +250,12 @@ module Pretty =
             func "CAS" [ printExpression l
                          printExpression f
                          printExpression t ]
-        | Fetch(l, r, m) ->
+        | Fetch(l, r, mo) ->
+            let rp = printExpression r
             equality
                 (printExpression l)
-                (hjoin [ printExpression r; printFetchMode m ])
-        | Postfix(l, m) ->
-            hjoin [ printExpression l; printFetchMode m ]
+                (maybe rp (fun m -> rp <-> printPostOp m) mo)
+        | Postfix(l, m) -> printExpression l <-> printPostOp m
         | Assume e -> func "assume" [ printExpression e ]
         | SymCommand sym -> printSolverExpression sym
         | Havoc var -> String "havoc" <+> String var
@@ -491,30 +276,6 @@ module Pretty =
         | ACond (cond = c; trueBranch = t; falseBranch = f) ->
             printITE printAtomic c t f
     and printAtomic (x : Atomic) : Doc = printAtomic' x.Node
-
-    /// <summary>
-    ///     Pretty-prints a type literal.
-    /// </summary>
-    /// <param name="lit">The <see cref="TypeLiteral"/> to print.</param>
-    /// <returns>
-    ///     A <see cref="Doc"/> representing the given type literal.
-    /// </returns>
-    let printTypeLiteral (lit : TypeLiteral) : Doc =
-        let rec pl lit suffix =
-            match lit with
-            | TInt -> syntaxIdent (String ("int")) <-> suffix
-            | TBool -> syntaxIdent (String ("bool")) <-> suffix
-            | TUser s -> syntaxLiteral (String s) <-> suffix
-            | TArray (len, contents) ->
-                let lenSuffix = squared (String (sprintf "%d" len))
-                pl contents (suffix <-> lenSuffix)
-        pl lit Nop
-
-    /// Pretty-prints parameters.
-    let printParam (par : Param) : Doc =
-        hsep
-            [ printTypeLiteral par.ParamType
-              syntaxLiteral (String par.ParamName) ]
 
     /// Pretty-prints a variable declaration, without semicolon.
     let printVarDecl (vs : VarDecl) : Doc =
@@ -565,27 +326,11 @@ module Pretty =
         Helpers.printBlock printCommand block
 
     /// Pretty-prints methods.
-    let printMethod (pCmd : 'cmd -> Doc)
-                    ({ Signature = s; Body = b } : Method<'cmd>)
+    let printMethod (pCmd : 'cmd -> Doc) (m : Method<'cmd>)
                     : Doc =
         hsep [ "method" |> String |> syntax
-               printFunc (printParam >> syntaxIdent) s
-               Helpers.printBlock pCmd b ]
-
-    /// Pretty-prints a general view prototype.
-    let printGeneralViewProto (pParam : 'Param -> Doc)(vp : GeneralViewProto<'Param>) : Doc =
-        match vp with
-        | NoIterator (Func = { Name = n; Params = ps }; IsAnonymous = _) ->
-            func n (List.map pParam ps)
-        | WithIterator (Func = { Name = n; Params = ps }) ->
-            (String "iter")
-            <+> func n (List.map pParam ps)
-
-    /// Pretty-prints a view prototype.
-    let printViewProtoList (vps : ViewProto list) : Doc =
-        hsep [ syntax (String "view")
-               commaSep (List.map (printGeneralViewProto printParam) vps) ]
-        |> withSemi
+               func m.MName (List.map printParam m.MParams)
+               Helpers.printBlock pCmd m.MBody ]
 
     /// Pretty-prints a search directive.
     let printSearch (i : int) : Doc =
@@ -615,7 +360,7 @@ module Pretty =
         | Method m ->
             fun mdoc -> vsep [Nop; mdoc; Nop]
             <| printMethod printCommand m
-        | ViewProtos v -> printViewProtoList v
+        | ViewProtos v -> printProtoAtomList v
         | Search i -> printSearch i
         | Constraint (view, def) -> printConstraint view def
         | Exclusive xs -> printExclusive xs

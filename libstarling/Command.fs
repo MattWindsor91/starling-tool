@@ -5,6 +5,7 @@ module Starling.Core.Command
 
 open Chessie.ErrorHandling
 
+open CViews.Ast
 open Starling.Utils
 open Starling.Lang
 open Starling.Core.TypeSystem
@@ -57,7 +58,7 @@ module Types =
         { Name : string
           Results : SVExpr list
           Args : SVExpr list
-          Node : AST.Types.Prim option }
+          Node : Prim option }
         override this.ToString() = sprintf "%A" this
 
     /// <summary>
@@ -411,7 +412,7 @@ module Create =
     let command (name : string) (results : SVExpr list) (args : SVExpr list) : PrimCommand =
         Stored { Name = name; Results = results; Args = args; Node = None }
 
-    let command' (name : string) (ast : AST.Types.Prim) (results : SVExpr list) (args : SVExpr list) : PrimCommand =
+    let command' (name : string) (ast : Prim) (results : SVExpr list) (args : SVExpr list) : PrimCommand =
         Stored { Name = name; Results = results; Args = args; Node = Some ast }
 
 /// <summary>

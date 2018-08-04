@@ -3,6 +3,7 @@
 /// </summary>
 module Starling.Lang.Frontend
 
+open CViews.Ast
 open Chessie.ErrorHandling
 open Starling
 open Starling.Core.Pretty
@@ -53,7 +54,7 @@ type Request =
 /// </summary>
 type Response =
     /// Output of the parsing step only.
-    | Parse of AST.Types.ScriptItem list
+    | Parse of ScriptItem list
     /// Output of the parsing and collation steps.
     | Collate of Collator.Types.CollatedScript
     /// Output of the parsing, collation, and modelling steps.
