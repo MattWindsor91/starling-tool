@@ -17,7 +17,7 @@ script:
     - export PATH=$PATH:$TRAVIS_BUILD_DIR/hsf/qarmc/bin
     - export LD_LIBRARY_PATH=$TRAVIS_BUILD_DIR/z3-z3-4.8.5/install/lib
     - dotnet tool install -g paket
-    - dotnet restore
+    - ~/.dotnet/tools/paket restore
     - dotnet build
     - dotnet test
     - ./regress.py -vg
