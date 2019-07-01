@@ -4,11 +4,6 @@ mono: none
 dotnet: 2.2.300
 dist: xenial
 
-addons:
-  apt:
-    packages:
-    - mono
-
 before_install:
     - ./install-z3.sh
     - ./install-hsf.sh
@@ -21,6 +16,7 @@ cache:
 script:
     - export PATH=$PATH:$TRAVIS_BUILD_DIR/hsf/qarmc/bin
     - export LD_LIBRARY_PATH=$TRAVIS_BUILD_DIR/z3-z3-4.8.5/install/lib
+    - dotnet tool install -g paket
     - dotnet restore
     - dotnet build
     - dotnet test
