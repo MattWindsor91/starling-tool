@@ -11,7 +11,7 @@ before_install:
 addons:
     apt:
         packages:
-            - mono-runtime
+            - mono-devel
 
 cache:
     directories:
