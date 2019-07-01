@@ -4,6 +4,11 @@ mono: none
 dotnet: 2.2.300
 dist: xenial
 
+addons:
+  apt:
+    packages:
+    - mono
+
 before_install:
     - ./install-z3.sh
     - ./install-hsf.sh
