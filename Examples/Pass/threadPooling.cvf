@@ -1,0 +1,31 @@
+// Version of the 'thread pooling' algorithm discussed as example 5 of
+// Hoenicke et al.'s 'Thread Modularity at Many Levels'.
+
+method iter() {
+	{| emp |}
+	    thread int start, end;
+	    <| start = current_task;
+	       current_task = current_task + task_width;
+	       end = current_task; |>
+    {| Loop(start, end) |}
+        while (start < end) {
+        	{| Work(start, end) |} start++; {| Loop(start, end) |}
+        }
+	{| emp |}
+}
+
+shared int task_width, current_task;
+
+view Loop(int s, int e);
+view Work(int s, int e);
+
+constraint emp -> 0 < task_width;
+
+constraint Loop(s, e) -> s <= e <= current_task;
+constraint Work(s, e) -> s <  e <= current_task;
+
+constraint Loop(s1, e1) * Loop(s2, e2) -> (e2 <= s1 || e1 <= s2);
+constraint Loop(s1, e1) * Work(s2, e2) -> (e2 <= s1 || e1 <= s2);
+
+// No two threads should work on the same work unit.
+constraint Work(s1, e1) * Work(s2, e2) -> (e2 <= s1 || e1 <= s2) && s1 != s2;

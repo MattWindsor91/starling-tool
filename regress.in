@@ -42,6 +42,7 @@ Pass:spinLockAdvisory:
 Pass:spinLockAtomicBranch:
 Pass:spinLockInt:
 Pass:spinLockMultiCmd:
+Pass:threadPooling:
 Pass:ticketLock:
 Pass:ticketLockNoIf:
 Pass:ticketLockNoInvariant:
