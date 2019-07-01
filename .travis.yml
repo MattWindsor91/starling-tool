@@ -19,5 +19,5 @@ script:
     - dotnet restore
     - dotnet build
     - dotnet test
-    - ./regress.py -vg
+    - python3.7 ./regress.py -vg
 
