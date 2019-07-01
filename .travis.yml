@@ -8,9 +8,10 @@ before_install:
     - ./install-z3.sh
     - ./install-hsf.sh
 
-apt:
-    packages:
-        - mono-runtime
+addons:
+    apt:
+        packages:
+            - mono-runtime
 
 cache:
     directories:
