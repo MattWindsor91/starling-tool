@@ -2,6 +2,7 @@ language: csharp
 solution: starling.sln
 mono: none
 dotnet: 2.2.300
+dist: xenial
 
 before_install:
     - ./install-z3.sh
