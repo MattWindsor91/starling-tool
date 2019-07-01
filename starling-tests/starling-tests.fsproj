@@ -31,12 +31,10 @@
     <Compile Include="UtilTests.fs" />
     <Compile Include="VarTests.fs" />
     <Compile Include="Z3Tests.fs" />
-    <Compile Include="Program.fs" />
   </ItemGroup>
   <ItemGroup>
-    <Reference Include="Microsoft.Z3">
-      <HintPath>..\Microsoft.Z3.dll</HintPath>
-    </Reference>
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="16.2.0" />
+    <PackageReference Include="nunit" Version="3.12.0" />
+    <PackageReference Include="NUnit3TestAdapter" Version="3.13.0" />
   </ItemGroup>
-  <Import Project="..\.paket\Paket.Restore.targets" />
 </Project>

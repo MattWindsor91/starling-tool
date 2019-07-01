@@ -8,11 +8,6 @@ before_install:
     - ./install-z3.sh
     - ./install-hsf.sh
 
-addons:
-    apt:
-        packages:
-            - mono-devel
-
 cache:
     directories:
         - $TRAVIS_BUILD_DIR/z3-z3-4.8.5/install/lib

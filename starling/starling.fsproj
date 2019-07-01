@@ -11,11 +11,8 @@
   <ItemGroup>
     <ProjectReference Include="..\libstarling\libstarling.fsproj" />
   </ItemGroup>
-  <!-- This is temporary. -->
   <ItemGroup>
-    <Reference Include="Microsoft.Z3">
-      <HintPath>..\Microsoft.Z3.dll</HintPath>
-    </Reference>
+    <PackageReference Include="chessie" Version="0.6.0" />
+    <PackageReference Include="CommandLineParser" Version="2.5.0" />
   </ItemGroup>
-  <Import Project="..\.paket\Paket.Restore.targets" />
 </Project>

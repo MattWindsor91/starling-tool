@@ -39,5 +39,9 @@
     <Compile Include="Grasshopper.fs" />
     <Compile Include="Frontend.fs" />
   </ItemGroup>
-  <Import Project="..\.paket\Paket.Restore.targets" />
+  <ItemGroup>
+    <PackageReference Include="chessie" Version="0.6.0" />
+    <PackageReference Include="fparsec" Version="1.0.3" />
+    <PackageReference Include="Microsoft.Z3.x64" Version="4.8.5" />
+  </ItemGroup>
 </Project>
