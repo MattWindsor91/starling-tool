@@ -16,38 +16,38 @@ thread bool oFlag;      // The thread's view of its opponent's flag state.
 thread int oTurn;       // The thread's view of the current turn.
 thread int i;           // The thread's turn identifier.
 
-view flagDown(int me);  // 'me' does not hold the lock and is not seeking it.
-view flagUp(int me);    // 'me' has put its flag up, but isn't waiting yet.
-view waiting(int me);   // 'me' is now waiting for the lock.
-view holdLock(int me);  // 'me' holds the lock.
+view FlagDown(int me);  // 'me' does not hold the lock and is not seeking it.
+view FlagUp(int me);    // 'me' has put its flag up, but isn't waiting yet.
+view Waiting(int me);   // 'me' is now waiting for the lock.
+view HoldLock(int me);  // 'me' holds the lock.
 
 
 /*
  * Locks the Peterson lock.
  */
 method lock() {
-  {| flagDown(i) |}
+  {| FlagDown(i) |}
     <| flag[i] = true; |>
-  {| flagUp(i) |}
+  {| FlagUp(i) |}
     <| turn = (i + 1) % 2; |> // oops!
-  {| waiting(i) |}
+  {| Waiting(i) |}
     do {
-      {| waiting(i) |}
+      {| Waiting(i) |}
         <| oFlag = flag[(i + 1) % 2]; |>
-      {| if (oFlag) { waiting(i) } else { holdLock(i) } |}
+      {| if oFlag { Waiting(i) } else { HoldLock(i) } |}
         <| oTurn = turn; |>
-      {| if (oFlag && (oTurn == i)) { waiting(i) } else { holdLock(i) } |}
-    } while (oFlag && (oTurn == i));
-  {| holdLock(i) |}
+      {| if oFlag && (oTurn == i) { Waiting(i) } else { HoldLock(i) } |}
+    } while oFlag && (oTurn == i);
+  {| HoldLock(i) |}
 }
 
 /*
  * Unlocks the Peterson lock.
  */
 method unlock() {
-  {| holdLock(i) |}
+  {| HoldLock(i) |}
     <| flag[i] = false; |>
-  {| flagDown(i) |}
+  {| FlagDown(i) |}
 }
 
 // Invariant: turn is always something well-formed.
@@ -59,10 +59,10 @@ constraint emp -> (turn == 0 || turn == 1);
  * Most of the interesting work happens in the interactions between
  * constraints: these just keep track of the flag and ensure 'me' is valid.
  */
-constraint flagDown(me)      -> flag[me] == false && (me == 0 || me == 1);
-constraint flagUp(me)        -> flag[me] == true  && (me == 0 || me == 1);
-constraint waiting(me)       -> flag[me] == true  && (me == 0 || me == 1);
-constraint holdLock(me)      -> flag[me] == true  && (me == 0 || me == 1);
+constraint FlagDown(me)      -> flag[me] == false && (me == 0 || me == 1);
+constraint FlagUp(me)        -> flag[me] == true  && (me == 0 || me == 1);
+constraint Waiting(me)       -> flag[me] == true  && (me == 0 || me == 1);
+constraint HoldLock(me)      -> flag[me] == true  && (me == 0 || me == 1);
 
 /*
  * If we have the lock, and the other thread is waiting, we have the turn.
@@ -77,19 +77,19 @@ constraint holdLock(me)      -> flag[me] == true  && (me == 0 || me == 1);
  * to our turn, and nothing destabilises this except us starting to
  * wait too.
  */
-constraint holdLock(me) * waiting(you) -> me != you && turn == you;
+constraint HoldLock(me) * Waiting(you) -> me != you && turn == you;
 
 /*
  * We can't be in multiple states at the same time, unless exactly one of those
  * states is flag-down.
  */
-constraint flagDown(me) * flagDown(you) -> me != you;
-constraint flagUp(me)   * flagUp(you)   -> me != you;
-constraint flagUp(me)   * waiting(you)  -> me != you;
-constraint flagUp(me)   * holdLock(you) -> me != you;
-constraint waiting(me)  * waiting(you)  -> me != you;
+constraint FlagDown(me) * FlagDown(you) -> me != you;
+constraint FlagUp(me)   * FlagUp(you)   -> me != you;
+constraint FlagUp(me)   * Waiting(you)  -> me != you;
+constraint FlagUp(me)   * HoldLock(you) -> me != you;
+constraint Waiting(me)  * Waiting(you)  -> me != you;
 
 /*
  * Goal: mutual exclusion.
  */
-constraint holdLock(me) * holdLock(you) -> false;
+constraint HoldLock(me) * HoldLock(you) -> false;
