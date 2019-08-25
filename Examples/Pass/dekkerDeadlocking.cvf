@@ -1,0 +1,47 @@
+/*
+ * The deadlocking third attempt of Dekker's algorithm from Ben-Ari's
+ * 'Principles of Concurrent Programming', first edition.
+ *
+ * This proof is in the 'Pass' directory because it establishes the mutual
+ * exclusion safety property.  Starling doesn't support liveness analysis at
+ * time of writing, and as such it can't distinguish this deadlocking attempt
+ * from the other safe attempts.
+ */
+
+view Idle(int tid), Want(int tid), HoldLock(int tid);
+
+shared bool[2] want;
+
+thread bool other_wants;
+
+constraint Idle(tid)         -> (tid == 0 || tid == 1) && !want[tid];
+constraint Want(tid)         -> (tid == 0 || tid == 1) &&  want[tid];
+constraint HoldLock(tid)     -> (tid == 0 || tid == 1) &&  want[tid];
+
+constraint HoldLock(x)     * HoldLock(y) -> false;
+
+constraint Idle(x)         * Idle(y)         -> x != y;
+constraint Idle(x)         * Want(y)         -> x != y;
+constraint Idle(x)         * HoldLock(y)     -> x != y;
+constraint Want(x)         * Want(y)         -> x != y;
+constraint Want(x)         * HoldLock(y)     -> x != y;
+
+method lock(int tid)
+{
+    {| Idle(tid) |}
+        <| want[tid] = true; |>
+    {| Want(tid) |}
+        do {
+            {| Want(tid) |}
+                <| other_wants = want[(tid + 1)% 2]; |>
+            {| if other_wants { Want(tid) } else { HoldLock(tid) } |}
+        } while other_wants;
+    {| HoldLock(tid) |}
+}
+
+method unlock(int tid)
+{
+    {| HoldLock(tid) |}
+        <| want[tid] = false; |>
+    {| Idle(tid) |}
+}

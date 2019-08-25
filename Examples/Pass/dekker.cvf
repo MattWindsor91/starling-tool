@@ -1,0 +1,70 @@
+/*
+ * Two-process Dekker's algorithm.
+ *
+ * This proof ONLY proves that the view `HoldLock` cannot be held twice
+ * simultaneously (so, the mutual exclusion safety property).  It does NOT prove
+ * that the turn mechanism used in Dekker's algorithm provides liveness
+ * (deadlock freedom and fairness).
+ */
+
+view Idle(int tid), Want(int tid), HoldLock(int tid);
+
+shared bool[2] want;
+shared int turn;
+
+thread bool other_wants;
+thread int other_turn;
+
+constraint emp -> turn == 0 || turn == 1;
+
+constraint Idle(tid)         -> (tid == 0 || tid == 1) && !want[tid];
+constraint Want(tid)         -> (tid == 0 || tid == 1) &&  want[tid];
+constraint HoldLock(tid)     -> (tid == 0 || tid == 1) &&  want[tid];
+
+constraint HoldLock(x)     * HoldLock(y) -> false;
+
+constraint Idle(x)         * Idle(y)         -> x != y;
+constraint Idle(x)         * Want(y)         -> x != y;
+constraint Idle(x)         * HoldLock(y)     -> x != y;
+constraint Want(x)         * Want(y)         -> x != y;
+constraint Want(x)         * HoldLock(y)     -> x != y;
+
+method lock(int tid)
+{
+    {| Idle(tid) |}
+        <| want[tid] = true; |>
+    {| Want(tid) |}
+        <| other_wants = want[(tid + 1)% 2]; |>
+    {| if other_wants { Want(tid) } else { HoldLock(tid) } |}
+        while other_wants {
+            {| Want(tid) |}
+                <| other_turn = turn; |>
+            {| Want(tid) |}
+                if other_turn != tid {
+                    {| Want(tid) |}
+                        <| want[tid] = false; |>
+                    {| Idle(tid) |}
+                        do {
+                            {| Idle(tid) |}
+                            <| other_turn = turn; |>
+                            {| if other_turn != tid { Idle(tid) } else { Idle(tid) } |}
+                        } while (other_turn != tid);
+                    {| Idle(tid) |}
+                        <| want[tid] = true; |>
+                    {| Want(tid) |}
+                }
+            {| Want(tid) |}
+                <| other_wants = want[(tid + 1)% 2]; |>
+            {| if other_wants { Want(tid) } else { HoldLock(tid) } |}
+        }
+    {| HoldLock(tid) |}
+}
+
+method unlock(int tid)
+{
+    {| HoldLock(tid) |}
+        <| turn = (tid + 1)%2; |>
+    {| HoldLock(tid) |}
+        <| want[tid] = false; |>
+    {| Idle(tid) |}
+}
